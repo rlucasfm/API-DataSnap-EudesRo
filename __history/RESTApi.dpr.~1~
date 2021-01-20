@@ -1,0 +1,22 @@
+program RESTApi;
+{$APPTYPE GUI}
+
+{$R *.dres}
+
+uses
+  Vcl.Forms,
+  Web.WebReq,
+  IdHTTPWebBrokerBridge,
+  FPrincipal in 'FPrincipal.pas' {Form1},
+  USM in 'USM.pas',
+  UWM in 'UWM.pas' {WebModule1: TWebModule};
+
+{$R *.res}
+
+begin
+  if WebRequestHandler <> nil then
+    WebRequestHandler.WebModuleClass := WebModuleClass;
+  Application.Initialize;
+  Application.CreateForm(TForm1, Form1);
+  Application.Run;
+end.

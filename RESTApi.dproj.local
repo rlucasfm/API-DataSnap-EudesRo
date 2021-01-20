@@ -1,0 +1,32 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<BorlandProject>
+  <Transactions>
+    <Transaction>2021/01/20 10:08:52.447,=C:\Users\richard\Documents\Embarcadero\Studio\Projects\Project2\FormUnit1.pas</Transaction>
+    <Transaction>2021/01/20 10:08:52.712,=C:\Users\richard\Documents\Embarcadero\Studio\Projects\Project2\ServerMethodsUnit1.pas</Transaction>
+    <Transaction>2021/01/20 10:08:52.890,=C:\Users\richard\Documents\Embarcadero\Studio\Projects\Project2\WebModuleUnit1.pas</Transaction>
+    <Transaction>2021/01/20 10:08:53.154,=C:\Users\richard\Documents\Embarcadero\Studio\Projects\Project2\js\base64.js</Transaction>
+    <Transaction>2021/01/20 10:08:53.196,=C:\Users\richard\Documents\Embarcadero\Studio\Projects\Project2\js\ServerFunctionExecutor.js</Transaction>
+    <Transaction>2021/01/20 10:08:53.227,=C:\Users\richard\Documents\Embarcadero\Studio\Projects\Project2\js\json2.js</Transaction>
+    <Transaction>2021/01/20 10:08:53.257,=C:\Users\richard\Documents\Embarcadero\Studio\Projects\Project2\js\CallbackFramework.js</Transaction>
+    <Transaction>2021/01/20 10:08:53.294,=C:\Users\richard\Documents\Embarcadero\Studio\Projects\Project2\js\ServerFunctions.js</Transaction>
+    <Transaction>2021/01/20 10:08:53.341,=C:\Users\richard\Documents\Embarcadero\Studio\Projects\Project2\js\base64-min.js</Transaction>
+    <Transaction>2021/01/20 10:08:53.377,=C:\Users\richard\Documents\Embarcadero\Studio\Projects\Project2\js\json2-min.js</Transaction>
+    <Transaction>2021/01/20 10:08:53.424,=C:\Users\richard\Documents\Embarcadero\Studio\Projects\Project2\js\ServerFunctionExecutor-min.js</Transaction>
+    <Transaction>2021/01/20 10:08:53.457,=C:\Users\richard\Documents\Embarcadero\Studio\Projects\Project2\js\CallbackFramework-min.js</Transaction>
+    <Transaction>2021/01/20 10:08:53.494,=C:\Users\richard\Documents\Embarcadero\Studio\Projects\Project2\js\connection.js</Transaction>
+    <Transaction>2021/01/20 10:08:53.534,=C:\Users\richard\Documents\Embarcadero\Studio\Projects\Project2\js\ServerFunctionInvoker.js</Transaction>
+    <Transaction>2021/01/20 10:08:53.561,=C:\Users\richard\Documents\Embarcadero\Studio\Projects\Project2\css\main.css</Transaction>
+    <Transaction>2021/01/20 10:08:53.596,=C:\Users\richard\Documents\Embarcadero\Studio\Projects\Project2\css\ServerFunctionInvoker.css</Transaction>
+    <Transaction>2021/01/20 10:08:53.625,=C:\Users\richard\Documents\Embarcadero\Studio\Projects\Project2\templates\ReverseString.html</Transaction>
+    <Transaction>2021/01/20 10:08:53.694,=C:\Users\richard\Documents\Embarcadero\Studio\Projects\Project2\templates\ServerFunctionInvoker.html</Transaction>
+    <Transaction>2021/01/20 10:08:53.730,=C:\Users\richard\Documents\Embarcadero\Studio\Projects\Project2\images\collapse.png</Transaction>
+    <Transaction>2021/01/20 10:08:53.763,=C:\Users\richard\Documents\Embarcadero\Studio\Projects\Project2\images\expand.png</Transaction>
+    <Transaction>2021/01/20 10:09:08.325,C:\Users\richard\Documents\Embarcadero\Studio\Projects\Project2\FPrincipal.dfm=C:\Users\richard\Documents\Embarcadero\Studio\Projects\Project2\FormUnit1.dfm</Transaction>
+    <Transaction>2021/01/20 10:09:08.325,C:\Users\richard\Documents\Embarcadero\Studio\Projects\Project2\FPrincipal.pas=C:\Users\richard\Documents\Embarcadero\Studio\Projects\Project2\FormUnit1.pas</Transaction>
+    <Transaction>2021/01/20 10:09:23.891,C:\Users\richard\Documents\Embarcadero\Studio\Projects\Project2\UWM.dfm=C:\Users\richard\Documents\Embarcadero\Studio\Projects\Project2\WebModuleUnit1.dfm</Transaction>
+    <Transaction>2021/01/20 10:09:23.891,C:\Users\richard\Documents\Embarcadero\Studio\Projects\Project2\UWM.pas=C:\Users\richard\Documents\Embarcadero\Studio\Projects\Project2\WebModuleUnit1.pas</Transaction>
+    <Transaction>2021/01/20 10:09:29.756,C:\Users\richard\Documents\Embarcadero\Studio\Projects\Project2\USM.pas=C:\Users\richard\Documents\Embarcadero\Studio\Projects\Project2\ServerMethodsUnit1.pas</Transaction>
+    <Transaction>2021/01/20 10:09:36.560,C:\Users\richard\Documents\Embarcadero\Studio\Projects\Project2\RESTApi.dproj=C:\Users\richard\Documents\Embarcadero\Studio\Projects\Project2\Project2.dproj</Transaction>
+    <Transaction>2021/01/20 10:10:29.489,=C:\Users\richard\Documents\Embarcadero\Studio\Projects\Project2\Unit2.pas</Transaction>
+  </Transactions>
+</BorlandProject>
