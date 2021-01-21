@@ -83,7 +83,23 @@ object FormPrincipal: TFormPrincipal
   end
   object DB_Check: TFDQuery
     Connection = DB_Connection
+    SQL.Strings = (
+      'SELECT * FROM clientes WHERE cpf = '#39'4877897410'#39)
     Left = 256
     Top = 120
+  end
+  object DB_Check2: TFDQuery
+    Connection = DB_Connection
+    SQL.Strings = (
+      'SELECT * FROM clientes WHERE cpf = '#39'4877897410'#39)
+    Left = 256
+    Top = 104
+  end
+  object DB_Check3: TFDQuery
+    Connection = DB_Connection
+    SQL.Strings = (
+      'SELECT * FROM clientes WHERE cpf = '#39'4877897410'#39)
+    Left = 256
+    Top = 88
   end
 end

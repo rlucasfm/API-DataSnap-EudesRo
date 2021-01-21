@@ -24,6 +24,8 @@ type
     DB_Query: TFDQuery;
     DB_IDGen: TFDQuery;
     DB_Check: TFDQuery;
+    DB_Check2: TFDQuery;
+    DB_Check3: TFDQuery;
     procedure FormCreate(Sender: TObject);
     procedure ApplicationEvents1Idle(Sender: TObject; var Done: Boolean);
     procedure ButtonStartClick(Sender: TObject);
