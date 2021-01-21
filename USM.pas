@@ -96,8 +96,11 @@ var
   WebModule   : TWebModule;
   Requisicao  : TJSONArray;
   Valores     : TJSONValue;
+  valor       : TJSONObject;
   clienteObj  : TJSONObject;
+  ID_Gen      : integer;
 begin
+  ID_Gen := primary_key('clientes')+1;
   Result := TJSONObject.Create;
   Try
     WebModule := GetDataSnapWebModule;
@@ -118,7 +121,7 @@ begin
       // Constroi o objeto JSON do Cliente
       clienteObj := TJSONObject.Create;
       clienteObj.AddPair('NomeCliente', Valores.GetValue<string>('nomedocliente'));
-      clienteObj.AddPair('CPF', Valores.GetValue<string>('cpf'));
+      clienteObj.AddPair('CPF', Valores.GetValue<string>('cpf/cnpj'));
       clienteObj.AddPair('Endereco', Valores.GetValue<string>('endereco'));
       clienteObj.AddPair('bairro', Valores.GetValue<string>('bairro'));
       clienteObj.AddPair('cidade', Valores.GetValue<string>('cidade'));
@@ -126,38 +129,49 @@ begin
       clienteObj.AddPair('uf', Valores.GetValue<string>('uf'));
       clienteObj.AddPair('telefone1', Valores.GetValue<string>('telefone1'));
       clienteObj.AddPair('telefone2', Valores.GetValue<string>('telefone2'));
-      clienteObj.AddPair('email1', Valores.GetValue<string>('email1'));
+      clienteObj.AddPair('email1', Valores.GetValue<string>('email'));
       clienteObj.AddPair('email2', Valores.GetValue<string>('email2'));
 
       with FormPrincipal do
       begin
-        DB_Query.Active := false;
-        DB_Query.SQL.Text := _INSERT;
-        DB_Query.SQL.Add(' VALUES (:codigo, :nome, :cpf, :endereco, :bairro, :cidade, :cep, :uf, :telefone1, :telefone2, :email1, :email2)');
+        DB_Check.Active := false;
+        DB_Check.SQL.Text := 'SELECT * FROM clientes WHERE cpf = :cpf_check';
+        DB_Check.ParamByName('cpf_check').Value := clienteObj.Values['CPF'].Value;
+        DB_Check.Open;
 
-        DB_Query.ParamByName('codigo').Value := primary_key('clientes')+1;
-        DB_Query.ParamByName('nome').Value := clienteObj.Values['NomeCliente'].Value;
-        DB_Query.ParamByName('cpf').Value := clienteObj.Values['CPF'].Value;
-        DB_Query.ParamByName('endereco').Value := clienteObj.Values['Endereco'].Value;
-        DB_Query.ParamByName('bairro').Value := clienteObj.Values['bairro'].Value;
-        DB_Query.ParamByName('cidade').Value := clienteObj.Values['cidade'].Value;
-        DB_Query.ParamByName('cep').Value := clienteObj.Values['cep'].Value;
-        DB_Query.ParamByName('uf').Value := clienteObj.Values['uf'].Value;
-        DB_Query.ParamByName('telefone1').Value := clienteObj.Values['telefone1'].Value;
-        DB_Query.ParamByName('telefone2').Value := clienteObj.Values['telefone2'].Value;
-        DB_Query.ParamByName('email1').Value := clienteObj.Values['email1'].Value;
-        DB_Query.ParamByName('email2').Value := clienteObj.Values['email2'].Value;
+        if DB_Check.RecordCount = 0 then
+        begin
+          DB_Query.Active := false;
+          DB_Query.SQL.Text := _INSERT;
+          DB_Query.SQL.Add(' VALUES (:codigo, :nome, :cpf, :endereco, :bairro, :cidade, :cep, :uf, :telefone1, :telefone2, :email1, :email2)');
+
+          DB_Query.ParamByName('codigo').Value := ID_Gen; inc(ID_Gen);
+          DB_Query.ParamByName('nome').Value := clienteObj.Values['NomeCliente'].Value;
+          DB_Query.ParamByName('cpf').Value := clienteObj.Values['CPF'].Value;
+          DB_Query.ParamByName('endereco').Value := clienteObj.Values['Endereco'].Value;
+          DB_Query.ParamByName('bairro').Value := clienteObj.Values['bairro'].Value;
+          DB_Query.ParamByName('cidade').Value := clienteObj.Values['cidade'].Value;
+          DB_Query.ParamByName('cep').Value := clienteObj.Values['cep'].Value;
+          DB_Query.ParamByName('uf').Value := clienteObj.Values['uf'].Value;
+          DB_Query.ParamByName('telefone1').Value := clienteObj.Values['telefone1'].Value;
+          DB_Query.ParamByName('telefone2').Value := clienteObj.Values['telefone2'].Value;
+          DB_Query.ParamByName('email1').Value := clienteObj.Values['email1'].Value;
+          DB_Query.ParamByName('email2').Value := clienteObj.Values['email2'].Value;
 
 
-        Try
-          DB_Query.ExecSQL;
-        Except on E : Exception do
-          Result.AddPair('Exception', E.Message);
-        End;
+          Try
+            DB_Query.ExecSQL;
+          Except on E : Exception do
+            Result.AddPair('Exception', E.Message);
+          End;
 
+          Result.AddPair('Cliente', clienteObj);
+        end;
+
+        DB_Check.Close;
+        Result.AddPair('Cliente', 'Já existe');
       end;
 
-      Result.AddPair('Cliente', clienteObj);
     end;
 end;
 

@@ -81,4 +81,9 @@ object FormPrincipal: TFormPrincipal
     Left = 336
     Top = 120
   end
+  object DB_Check: TFDQuery
+    Connection = DB_Connection
+    Left = 256
+    Top = 120
+  end
 end

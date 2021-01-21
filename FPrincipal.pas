@@ -23,6 +23,7 @@ type
     DB_Connection: TFDConnection;
     DB_Query: TFDQuery;
     DB_IDGen: TFDQuery;
+    DB_Check: TFDQuery;
     procedure FormCreate(Sender: TObject);
     procedure ApplicationEvents1Idle(Sender: TObject; var Done: Boolean);
     procedure ButtonStartClick(Sender: TObject);
