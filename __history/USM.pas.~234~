@@ -92,7 +92,7 @@ end;
 function TSM.UpdateCliente(ID_BANCO : integer): TJSONObject;
 const
   _INSERT = 'INSERT INTO clientes (codigo, nome, cpf, endereco, setor, cidade, cep, uf, fone, fone_1, e_mail, e_mail1)';
-  _INSERT_OP = 'INSERT INTO operacoes (cliente, nroperacao, remessa, tipooperacao, datavencto, valordivida, condnegociais)';
+  _INSERT_OP = 'INSERT INTO operacoes (cliente, nroperacao, remessa, tipooperacao, datavencto, valornominal, condnegociais, garantiasreais)';
 var
   WebModule   : TWebModule;
   Requisicao  : TJSONArray;
@@ -100,9 +100,9 @@ var
   clienteObj  : TJSONObject;
   operacaoObj : TJSONObject;
   ID_Gen      : integer;
-  codigoData  : Array of Char;
+  codigoData  : string;
   codremessa  : string;
-  dateHandle  : TDateTime;
+  dataRem     : TDateTime;
 begin
   ID_Gen := primary_key('clientes')+1;
   Result := TJSONObject.Create;
@@ -137,15 +137,22 @@ begin
       clienteObj.AddPair('email2', Valores.GetValue<string>('email2'));
 
       // Constroi o objeto JSON da Operação
-      operacaoObj := TJSONObject.Create;
-      operacaoObj.AddPair('nroperacao', Valores.GetValue<string>('nroperacao'));
-      operacaoObj.AddPair('nomeoperacao', Valores.GetValue<string>('nomeoperacao'));
-      operacaoObj.AddPair('dtvencimento', Valores.GetValue<string>('dtvencimento'));
-      operacaoObj.AddPair('valoroperacao', Valores.GetValue<string>('valoroperacao'));
-      operacaoObj.AddPair('observacoes', Valores.GetValue<string>('observacoes'));
-      operacaoObj.AddPair('garantias', Valores.GetValue<string>('garantias'));
-      operacaoObj.AddPair('cpf', Valores.GetValue<string>('cpf/cnpj'));
-      operacaoObj.AddPair('cod_banco', ID_BANCO.ToString);
+      if Valores.TryGetValue<string>('nroperacao') <> null then
+      begin
+        operacaoObj := TJSONObject.Create;
+        operacaoObj.AddPair('nroperacao', Valores.GetValue<string>('nroperacao'));
+        operacaoObj.AddPair('nomeoperacao', Valores.GetValue<string>('nomeoperacao'));
+        operacaoObj.AddPair('dtvencimento', Valores.GetValue<string>('dtvencimento'));
+        operacaoObj.AddPair('valoroperacao', Valores.GetValue<string>('valoroperacao'));
+        operacaoObj.AddPair('observacoes', Valores.GetValue<string>('observacoes'));
+        operacaoObj.AddPair('garantias', Valores.GetValue<string>('garantias'));
+        operacaoObj.AddPair('cpf', Valores.GetValue<string>('cpf/cnpj'));
+        operacaoObj.AddPair('cod_banco', ID_BANCO.ToString);
+      end
+      else
+      begin
+        operacaoObj.AddPair('nroperacao', 'NULL');
+      end;
 
       // ----------------- CADASTRO DO CLIENTE/OPERAÇÃO, CHECANDO ANTES SE JÁ EXISTE -----------------
       with FormPrincipal do
@@ -195,14 +202,13 @@ begin
         DB_Check2.ParamByName('cpf_check').Value := operacaoObj.Values['cpf'].Value;
         DB_Check2.Open;
 
-        //codigoData := IntToStr(Trunc(StrToDate(operacaoObj.Values['dtvencimento'].Value) - EncodeDate(1997,10,07)));
-        codigoData := operacaoObj.Values['dtvencimento'].Value.ToCharArray;
-        dateHandle := EncodeDate(codigoData[5]+codigoData[6]+codigoData[7]+codigoData[8], codigoData[3]+codigoData[4], codigoData[0]+codigoData[1]);
-//        codremessa := IntToStr(ID_BANCO)+codigoData;
-        Result.AddPair('dateHandle', DateToStr(dateHandle));
 
-        if operacaoObj.Values['dtvencimento'].Value <> 'NULL'
-        then Result.AddPair('Data1', EncodeDate(operacaoObj.Values['dtvencimento'].Value) );
+        if operacaoObj.Values['dtvencimento'].Value <> 'NULL' then
+//        dataRem := VarToDateTime(operacaoObj.Values['dtvencimento'].Value);
+//        codigoData := IntToStr(Trunc(dataRem - EncodeDate(1997,10,07)));
+        codigoData := IntToStr(Trunc(now - EncodeDate(1997,10,07)));
+        codremessa := IntToStr(ID_BANCO)+codigoData;
+
 
         DB_Check3.Active := false;
         DB_Check3.SQL.Text := 'SELECT * FROM operacoes WHERE cliente = :cliente AND nroperacao = :noperacao AND remessa = :remessa';
@@ -214,10 +220,12 @@ begin
         // ----------------- CADASTRO DE OPERAÇÃO -----------------
         DB_Query.Active := false;
         DB_Query.SQL.Text := _INSERT_OP;
-        DB_Query.SQL.Add(' VALUES (:cliente, :nroperacao, :remessa, :tipooperacao, :datavencto, :valordivida, :condnegociais)');
+        DB_Query.SQL.Add(' VALUES (:cliente, :nroperacao, :remessa, :tipooperacao, :datavencto, :valordivida, :condnegociais, :garantiasreais)');
 
+        // Verifica se a operação já não foi cadastrada
         if DB_Check3.RecordCount = 0 then
         begin
+          // Se o registro tem alguma operação relacionada
           if operacaoObj.Values['nroperacao'].Value <> 'NULL' then
           begin
             DB_Query.ParamByName('cliente').Value       := DB_Check2.FieldByName('codigo').Value;
@@ -227,12 +235,13 @@ begin
             DB_Query.ParamByName('datavencto').Value    := operacaoObj.Values['dtvencimento'].Value;
             DB_Query.ParamByName('valordivida').Value   := operacaoObj.Values['valoroperacao'].Value;
             DB_Query.ParamByName('condnegociais').Value := operacaoObj.Values['observacoes'].Value;
+            DB_Query.ParamByName('garantiasreais').Value:= operacaoObj.Values['garantias'].Value;
 
-//            Try
-//              DB_Query.ExecSQL;
-//            Except on E : Exception do
-//              Result.AddPair('Exception', E.Message);
-//            End;
+            Try
+              DB_Query.ExecSQL;
+            Except on E : Exception do
+              Result.AddPair('Exception', E.Message);
+            End;
 
             DB_Check2.Close;
           end;
