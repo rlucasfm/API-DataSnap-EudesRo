@@ -1,5 +1,6 @@
-// 
+﻿// 
 // Created by the DataSnap proxy generator.
+// 26/01/2021 14:09:48
 // 
 
 function DSAdmin(connectionInfo)
@@ -615,57 +616,117 @@ function DSAdmin(connectionInfo)
   };
 }
 
-function TServerMethods1(connectionInfo)
+function TSM(connectionInfo)
 {
-  this.executor = new ServerFunctionExecutor("TServerMethods1",connectionInfo);
+  this.executor = new ServerFunctionExecutor("TSM",connectionInfo);
 
   /*
-   * @param Value [in] - Type on server: string
-   * @return result - Type on server: string
+   * @param ID_BANCO [in] - Type on server: Integer
+   * @return result - Type on server: TJSONObject
    */
-  this.EchoString = function(Value) {
-    var returnObject = this.executor.executeMethod("EchoString", "GET", [Value], arguments[1], true, arguments[2], arguments[3]);
+  this.Cliente = function(ID_BANCO) {
+    var returnObject = this.executor.executeMethod('Cliente', "GET", [ID_BANCO], arguments[1], true, arguments[2], arguments[3]);
     if (arguments[1] == null) {
       if (returnObject != null && returnObject.result != null && isArray(returnObject.result)) {
         var resultArray = returnObject.result;
         var resultObject = new Object();
-        resultObject.Value = Value;
+        resultObject.ID_BANCO = ID_BANCO;
         resultObject.result = resultArray[0];
+        if (returnObject.cacheId != null && returnObject.cmdIndex != null) {
+          resultObject._cacheId = returnObject.cacheId;
+          resultObject._cmdIndex = returnObject.cmdIndex;
+        }
         return resultObject;
       }
       return returnObject;
     }
   };
 
-  this.EchoString_URL = function(Value) {
-    return this.executor.getMethodURL("EchoString", "GET", [Value], arguments[1])[0];
+  this.Cliente_URL = function(ID_BANCO) {
+    return this.executor.getMethodURL("Cliente", "GET", [ID_BANCO], arguments[1])[0];
   };
 
   /*
-   * @param Value [in] - Type on server: string
-   * @return result - Type on server: string
+   * @param ID_BANCO [in] - Type on server: Integer
+   * @return result - Type on server: TJSONObject
    */
-  this.ReverseString = function(Value) {
-    var returnObject = this.executor.executeMethod("ReverseString", "GET", [Value], arguments[1], true, arguments[2], arguments[3]);
+  this.UpdateCliente = function(ID_BANCO) {
+    var returnObject = this.executor.executeMethod('Cliente', "POST", [ID_BANCO], arguments[1], true, arguments[2], arguments[3]);
     if (arguments[1] == null) {
       if (returnObject != null && returnObject.result != null && isArray(returnObject.result)) {
         var resultArray = returnObject.result;
         var resultObject = new Object();
-        resultObject.Value = Value;
+        resultObject.ID_BANCO = ID_BANCO;
         resultObject.result = resultArray[0];
+        if (returnObject.cacheId != null && returnObject.cmdIndex != null) {
+          resultObject._cacheId = returnObject.cacheId;
+          resultObject._cmdIndex = returnObject.cmdIndex;
+        }
         return resultObject;
       }
       return returnObject;
     }
   };
 
-  this.ReverseString_URL = function(Value) {
-    return this.executor.getMethodURL("ReverseString", "GET", [Value], arguments[1])[0];
+  this.UpdateCliente_URL = function(ID_BANCO) {
+    return this.executor.getMethodURL("Cliente", "POST", [ID_BANCO], arguments[1])[0];
+  };
+
+  /*
+   * @param ID_Cliente [in] - Type on server: Integer
+   * @return result - Type on server: TJSONObject
+   */
+  this.AcceptCliente = function(ID_Cliente) {
+    var returnObject = this.executor.executeMethod('Cliente', "PUT", [ID_Cliente], arguments[1], true, arguments[2], arguments[3]);
+    if (arguments[1] == null) {
+      if (returnObject != null && returnObject.result != null && isArray(returnObject.result)) {
+        var resultArray = returnObject.result;
+        var resultObject = new Object();
+        resultObject.ID_Cliente = ID_Cliente;
+        resultObject.result = resultArray[0];
+        if (returnObject.cacheId != null && returnObject.cmdIndex != null) {
+          resultObject._cacheId = returnObject.cacheId;
+          resultObject._cmdIndex = returnObject.cmdIndex;
+        }
+        return resultObject;
+      }
+      return returnObject;
+    }
+  };
+
+  this.AcceptCliente_URL = function(ID_Cliente) {
+    return this.executor.getMethodURL("Cliente", "PUT", [ID_Cliente], arguments[1])[0];
+  };
+
+  /*
+   * @param ID_Cliente [in] - Type on server: Integer
+   * @return result - Type on server: TJSONObject
+   */
+  this.CancelCliente = function(ID_Cliente) {
+    var returnObject = this.executor.executeMethod('CancelCliente', "GET", [ID_Cliente], arguments[1], true, arguments[2], arguments[3]);
+    if (arguments[1] == null) {
+      if (returnObject != null && returnObject.result != null && isArray(returnObject.result)) {
+        var resultArray = returnObject.result;
+        var resultObject = new Object();
+        resultObject.ID_Cliente = ID_Cliente;
+        resultObject.result = resultArray[0];
+        if (returnObject.cacheId != null && returnObject.cmdIndex != null) {
+          resultObject._cacheId = returnObject.cacheId;
+          resultObject._cmdIndex = returnObject.cmdIndex;
+        }
+        return resultObject;
+      }
+      return returnObject;
+    }
+  };
+
+  this.CancelCliente_URL = function(ID_Cliente) {
+    return this.executor.getMethodURL("CancelCliente", "GET", [ID_Cliente], arguments[1])[0];
   };
 }
 
 var JSProxyClassList = {
   "DSAdmin": ["GetPlatformName","ClearResources","FindPackages","FindClasses","FindMethods","CreateServerClasses","DropServerClasses","CreateServerMethods","DropServerMethods","GetServerClasses","ListClasses","DescribeClass","ListMethods","DescribeMethod","GetServerMethods","GetServerMethodParameters","GetDatabaseConnectionProperties","GetDSServerName","ConsumeClientChannel","ConsumeClientChannelTimeout","CloseClientChannel","RegisterClientCallbackServer","UnregisterClientCallback","BroadcastToChannel","BroadcastObjectToChannel","NotifyCallback","NotifyObject"],
-  "TServerMethods1": ["EchoString","ReverseString"]
+  "TSM": ["Cliente","UpdateCliente","AcceptCliente","CancelCliente"]
 };
 
