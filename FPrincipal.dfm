@@ -63,11 +63,12 @@ object FormPrincipal: TFormPrincipal
   end
   object DB_Connection: TFDConnection
     Params.Strings = (
-      'Database=C:\VozCobBANCO\07012021_220059\07012021_220059.FDB'
+      
+        'Database=C:\Users\richard\Documents\Embarcadero\Studio\Projects\' +
+        'API-EudesRoCI\database\APIDATABASE.FDB'
       'User_Name=SYSDBA'
       'Password=masterkey'
       'DriverID=FB')
-    Connected = True
     Left = 256
     Top = 176
   end

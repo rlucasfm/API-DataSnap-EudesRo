@@ -10,13 +10,21 @@ type
   TSM = class(TComponent)
   private
     { Private declarations }
-    function primary_key(const tabela : string)       : integer;
+    function primary_key(const tabela : string; const chave : string)       : integer;
+    function StripChars ( const Text : string; const InValidChars : System.SysUtils.TSysCharSet) : string;
   public
     { Public declarations }
-    function Cliente(const ID_BANCO: integer = 0)   : TJSONObject; // GET
+    // Métodos para os clientes
+    function Cliente(const ID_BANCO: integer = 0)     : TJSONObject; // GET
     function UpdateCliente(ID_BANCO : integer)        : TJSONObject; // POST
-    function AcceptCliente(const ID_BANCO: integer) : TJSONObject; // PUT
+    function AcceptCliente(const ID_BANCO: integer)   : TJSONObject; // PUT
     function CancelCliente(const ID_Cliente: integer) : TJSONObject; // DELETE
+
+    // Métodos para as listas
+    function Lista(const ID_BANCO: integer = 0)   : TJSONObject; // GET
+    function UpdateLista(ID_BANCO : integer)      : TJSONObject; // POST
+    function AcceptLista(const ID_LISTA: integer) : TJSONObject; // PUT
+    function CancelLista(const ID_LISTA: integer) : TJSONObject; // DELETE
   end;
 {$METHODINFO OFF}
 
@@ -100,11 +108,96 @@ begin
   end;
 end;
 
+
+function TSM.AcceptLista(const ID_LISTA: integer): TJSONObject;
+const
+  _UPDATE = 'UPDATE listas SET nome = :nome, tipoemail = :tipoemail, diasvenc = :diasvenc, horadisparo = :horadisparo, mensagem = :mensagem WHERE id = :id';
+var
+  WebModule   : TWebModule;
+  stringJSON  : TArray<string>;
+  strValor    : string;
+  forIndex    : integer;
+  stringTemp  : string;
+  listaObj    : TJSONObject;
+begin
+  Result  := TJSONObject.Create;
+  listaObj:= TJSONObject.Create;
+
+  // Tenta recuperar o conteúdo do Request Body
+  Try
+    WebModule := GetDataSnapWebModule;
+  Except on E : Exception do
+    Result.AddPair('Message', 'Erro ao recuperar conteúdo');
+  End;
+
+  if WebModule.Request.Content.IsEmpty then
+  begin
+      Result.AddPair('Message', 'Conteúdo vazio');
+  end;
+
+  // Recupera a string JSON enviada e constroi um objeto JSON ordenado.
+  stringJSON := WebModule.Request.ContentFields.ToStringArray;
+  forIndex := 1;
+  for strValor in stringJSON do
+  begin
+    if Odd(forIndex) then
+    begin
+      stringTemp := StripChars(strValor, [',','\','"','{']);
+    end
+    else
+    begin
+      listaObj.AddPair(stringTemp, StripChars(strValor, [',','\','"','{']));
+    end;
+    forIndex := forIndex+1;
+  end;
+  // ---------- OBJETO CONSTRUÍDO ----------
+
+  with FormPrincipal do
+  begin
+    DB_Query.Active := false;
+    DB_Query.SQL.Text := _UPDATE;
+    DB_Query.ParamByName('id').Value :=  ID_LISTA;
+    DB_Query.ParamByName('nome').Value :=  listaObj.Values['nomeLista'].Value;
+    DB_Query.ParamByName('tipoemail').Value :=  listaObj.Values['tipoEmail'].Value;
+    DB_Query.ParamByName('diasvenc').Value :=  listaObj.Values['diasVencimento'].Value;
+    DB_Query.ParamByName('horadisparo').Value :=  listaObj.Values['horaDisparo'].Value;
+    DB_Query.ParamByName('mensagem').Value :=  listaObj.Values['mensagemLista'].Value;
+
+    Try
+      DB_Query.ExecSQL;
+      Result.AddPair('Response', 'Lista atualizada com sucesso');
+    Except on E : Exception do
+      Result.AddPair('Response', E.Message);
+    End;
+  end;
+
+end;
+
 // DELETE
 function TSM.CancelCliente(const ID_Cliente: integer): TJSONObject;
 begin
   Result := TJSONObject.Create;
   Result.AddPair('Message', 'DELETE');
+end;
+
+function TSM.CancelLista(const ID_LISTA: integer): TJSONObject;
+const
+  _DELETE = 'DELETE FROM listas WHERE id = :id';
+begin
+  Result := TJSONObject.Create;
+  with FormPrincipal do
+  begin
+    DB_Query.Active := false;
+    DB_Query.SQL.Text := _DELETE;
+    DB_Query.ParamByName('id').Value :=  ID_LISTA;
+
+    Try
+      DB_Query.ExecSQL;
+      Result.AddPair('Response', 'Lista deletada com sucesso');
+    Except on E : Exception do
+      Result.AddPair('Response', E.Message);
+    End;
+  end;
 end;
 
 // GET
@@ -122,18 +215,71 @@ begin
   end;
 end;
 
+function TSM.Lista(const ID_BANCO: integer): TJSONObject;
+const
+  _SELECT = 'SELECT * FROM listas ';
+var
+  index    : integer;
+  listaObj : TJSONObject;
+begin
+  with FormPrincipal do
+  begin
+    DB_Query.Active := false;
+    DB_Query.SQL.Text := _SELECT;
+    DB_Query.SQL.Add('WHERE id_banco = :id_banco');
+    DB_Query.ParamByName('id_banco').Value := ID_BANCO;
+    DB_Query.Open;
+
+    Result := TJSONObject.Create;
+    DB_Query.First;
+    index := 0;
+    while not DB_Query.Eof do
+    begin
+      listaObj := TJSONObject.Create;
+
+      listaObj.AddPair('id', DB_Query.FieldByName('ID').Value);
+      listaObj.AddPair('nome', DB_Query.FieldByName('nome').Value);
+      listaObj.AddPair('tipoemail', DB_Query.FieldByName('tipoemail').Value);
+      listaObj.AddPair('diasvenc', DB_Query.FieldByName('diasvenc').Value);
+      listaObj.AddPair('horadisparo', DB_Query.FieldByName('horadisparo').Value);
+      listaObj.AddPair('mensagem', DB_Query.FieldByName('mensagem').Value);
+
+      Result.AddPair(inttostr(index),listaObj);
+      DB_Query.Next;
+      index := index+1;
+    end;
+  end;
+end;
+
 // Pegar a chave primária da tabela dada
-function TSM.primary_key(const tabela: string): integer;
+function TSM.primary_key(const tabela: string; const chave: string): integer;
 begin
   with FormPrincipal do
   begin
     DB_IDGen.Active := false;
-    DB_IDGen.SQL.Text := 'SELECT FIRST 1 * FROM '+tabela+' ORDER BY codigo DESC';
+    DB_IDGen.SQL.Text := 'SELECT FIRST 1 * FROM '+tabela+' ORDER BY '+chave+' DESC';
     DB_IDGen.Open;
 
-    Result := DB_IDGen.FieldByName('codigo').AsInteger;
+    Result := DB_IDGen.FieldByName(chave).AsInteger;
     DB_IDGen.Close;
   end;
+end;
+
+function TSM.StripChars(const Text: string;
+  const InValidChars: System.SysUtils.TSysCharSet): string;
+  var
+  i,j,zbsAdj : Integer;
+begin
+  SetLength(Result,Length(Text));  // Preallocate result maximum length
+  j := 0; // Resulting string length counter
+  zbsAdj := 1-Low(String); // Handles zero based string offset
+  for i := Low(Text) to High(Text) do begin
+    if not CharInSet(Text[i],InValidChars) then begin
+      Inc(j);
+      Result[j-zbsAdj] := Text[i];
+    end;
+  end;
+  SetLength(Result,j); // Set result actual length
 end;
 
 // POST
@@ -152,7 +298,7 @@ var
   codremessa  : string;
   dataRem     : TDateTime;
 begin
-  ID_Gen := primary_key('clientes')+1;
+  ID_Gen := primary_key('clientes', 'codigo')+1;
   Result := TJSONObject.Create;
   Try
     WebModule := GetDataSnapWebModule;
@@ -305,6 +451,74 @@ begin
       end;
 
     end;
+end;
+
+function TSM.UpdateLista(ID_BANCO: integer): TJSONObject;
+const
+  _INSERT = 'INSERT INTO listas (id, id_banco, nome, tipoemail, diasvenc, horadisparo, mensagem) VALUES (:id, :id_banco, :nome, :tipoemail, :diasvenc, :horadisparo, :mensagem)';
+var
+  WebModule   : TWebModule;
+  stringJSON  : TArray<string>;
+  strValor    : string;
+  ID_Gen      : integer;
+  forIndex    : integer;
+  stringTemp  : string;
+  listaObj    : TJSONObject;
+begin
+  // Gera uma chave primária e instancia os objetos JSON
+  ID_Gen  := primary_key('listas', 'id')+1;
+  Result  := TJSONObject.Create;
+  listaObj:= TJSONObject.Create;
+
+  // Tenta recuperar o conteúdo do Request Body
+  Try
+    WebModule := GetDataSnapWebModule;
+  Except on E : Exception do
+    Result.AddPair('Message', 'Erro ao recuperar conteúdo');
+  End;
+
+  if WebModule.Request.Content.IsEmpty then
+  begin
+      Result.AddPair('Message', 'Conteúdo vazio');
+  end;
+
+  // Recupera a string JSON enviada e constroi um objeto JSON ordenado.
+  stringJSON := WebModule.Request.ContentFields.ToStringArray;
+  forIndex := 1;
+  for strValor in stringJSON do
+  begin
+    if Odd(forIndex) then
+    begin
+      stringTemp := StripChars(strValor, [',','\','"','{']);
+    end
+    else
+    begin
+      listaObj.AddPair(stringTemp, StripChars(strValor, [',','\','"','{']));
+    end;
+    forIndex := forIndex+1;
+  end;
+  // ---------- OBJETO CONSTRUÍDO ----------
+
+  with FormPrincipal do
+  begin
+    DB_Query.Active := false;
+    DB_Query.SQL.Text := _INSERT;
+    DB_Query.ParamByName('id').Value :=  ID_Gen;
+    DB_Query.ParamByName('id_banco').Value :=  ID_BANCO;
+    DB_Query.ParamByName('nome').Value :=  listaObj.Values['nomeLista'].Value;
+    DB_Query.ParamByName('tipoemail').Value :=  listaObj.Values['tipoEmail'].Value;
+    DB_Query.ParamByName('diasvenc').Value :=  listaObj.Values['diasVencimento'].Value;
+    DB_Query.ParamByName('horadisparo').Value :=  listaObj.Values['horaDisparo'].Value;
+    DB_Query.ParamByName('mensagem').Value :=  listaObj.Values['mensagemLista'].Value;
+
+    Try
+      DB_Query.ExecSQL;
+      Result.AddPair('Response', 'Lista cadastrada com sucesso');
+    Except on E : Exception do
+      Result.AddPair('Exception', E.Message);
+    End;
+  end;
+
 end;
 
 end.
