@@ -10,7 +10,8 @@ uses
   FireDAC.Phys.Intf, FireDAC.Stan.Def, FireDAC.Stan.Pool, FireDAC.Stan.Async,
   FireDAC.Phys, FireDAC.Phys.FB, FireDAC.Phys.FBDef, FireDAC.VCLUI.Wait,
   FireDAC.Stan.Param, FireDAC.DatS, FireDAC.DApt.Intf, FireDAC.DApt, Data.DB,
-  FireDAC.Comp.DataSet, FireDAC.Comp.Client;
+  FireDAC.Comp.DataSet, FireDAC.Comp.Client, Vcl.ExtCtrls, Datasnap.DBClient,
+  Vcl.Grids, Vcl.DBGrids, DateUtils;
 
 type
   TFormPrincipal = class(TForm)
@@ -26,11 +27,29 @@ type
     DB_Check: TFDQuery;
     DB_Check2: TFDQuery;
     DB_Check3: TFDQuery;
+    Timer_12h: TTimer;
+    DB_Listas: TFDQuery;
+    Lista_Temp: TClientDataSet;
+    Lista_TempID: TIntegerField;
+    Lista_TempID_BANCO: TIntegerField;
+    Lista_TempNOME: TStringField;
+    Lista_TempTIPOEMAIL: TIntegerField;
+    Lista_TempDIASVENC: TIntegerField;
+    Lista_TempHORADISPARO: TTimeField;
+    Lista_TempMENSAGEM: TBlobField;
+    Lista_TempTIPOCAMPANHA: TStringField;
+    Lista_Source: TDataSource;
+    DBGrid1: TDBGrid;
+    Label2: TLabel;
+    Timer_10m: TTimer;
+    DB_Ops: TFDQuery;
     procedure FormCreate(Sender: TObject);
     procedure ApplicationEvents1Idle(Sender: TObject; var Done: Boolean);
     procedure ButtonStartClick(Sender: TObject);
     procedure ButtonStopClick(Sender: TObject);
     procedure ButtonOpenBrowserClick(Sender: TObject);
+    procedure Timer_12hTimer(Sender: TObject);
+    procedure Timer_10mTimer(Sender: TObject);
   private
     FServer: TIdHTTPWebBrokerBridge;
     procedure StartServer;
@@ -41,6 +60,7 @@ type
 
 var
   FormPrincipal: TFormPrincipal;
+  index : integer;
 
 implementation
 
@@ -86,8 +106,34 @@ begin
 end;
 
 procedure TFormPrincipal.FormCreate(Sender: TObject);
+const
+  _SELECT = 'SELECT * FROM listas';
 begin
   FServer := TIdHTTPWebBrokerBridge.Create(Self);
+
+  DB_Listas.Active := false;
+  DB_Listas.SQL.Text := _SELECT;
+  DB_Listas.Open;
+
+  DB_Listas.First;
+  Lista_Temp.Close;
+  Lista_Temp.CreateDataSet;
+  Lista_Temp.Open;
+  while not DB_Listas.Eof do
+  begin
+    Lista_Temp.Append;
+    Lista_Temp.FieldByName('ID').Value := DB_Listas.FieldByName('id').Value;
+    Lista_Temp.FieldByName('ID_BANCO').Value := DB_Listas.FieldByName('id_banco').Value;
+    Lista_Temp.FieldByName('NOME').Value := DB_Listas.FieldByName('nome').Value;
+    Lista_Temp.FieldByName('TIPOEMAIL').Value := DB_Listas.FieldByName('tipoemail').Value;
+    Lista_Temp.FieldByName('DIASVENC').Value := DB_Listas.FieldByName('diasvenc').Value;
+    Lista_Temp.FieldByName('HORADISPARO').Value := DB_Listas.FieldByName('horadisparo').Value;
+    Lista_Temp.FieldByName('MENSAGEM').Value := DB_Listas.FieldByName('mensagem').Value;
+    Lista_Temp.FieldByName('TIPOCAMPANHA').Value := DB_Listas.FieldByName('tipocampanha').Value;
+    Lista_Temp.Post;
+
+    DB_Listas.Next;
+  end;
 end;
 
 procedure TFormPrincipal.StartServer;
@@ -99,5 +145,95 @@ begin
     FServer.Active := True;
   end;
 end;
+
+procedure TFormPrincipal.Timer_10mTimer(Sender: TObject);
+var
+  SQL_Query   : string;
+  horaAgora   : TDateTime;
+  horaDisparo : TDateTime;
+  diaVenc     : TDateTime;
+  diaVencStr  : string;
+  permTempo   : integer;
+begin
+  // Richard @ Tempo de permissividade entre a hora da lista e a hora atual.
+  permTempo := 5;
+
+  // Richard @ Percorre a tabela temporária de listas em memória,
+  //         @ Checando se está na hora de enviar alguma lista
+  Lista_Temp.First;
+  horaAgora := Now;
+
+  while not Lista_Temp.Eof do
+  begin
+  horaDisparo := Lista_Temp.FieldByName('HORADISPARO').Value;
+    if (CompareTime(horaDisparo,IncMinute(horaAgora, -permTempo)) > 0) AND (CompareTime(horaDisparo,IncMinute(horaAgora, permTempo)) < 0) then
+    begin
+      // Richard @ Se estiver na hora de enviar a lista, busca todas operações
+      //         @ onde a data de vencimento condiz com a regra da lista.
+      diaVenc     := IncDay(horaAgora, Lista_Temp.FieldByName('DIASVENC').AsInteger);
+      diaVencStr  := StringReplace(DateToStr(diaVenc), '/', '.', [rfReplaceAll, rfIgnoreCase]);
+      SQL_Query := 'SELECT DISTINCT c.nome, o.tipooperacao, o.datavencto, o.valornominal, o.condnegociais FROM operacoes o ' +
+                   'INNER JOIN clientes c ON c.codigo = o.cliente ' +
+                   'INNER JOIN listas l ON l.id_banco = o.banco ' +
+                   'WHERE o.datavencto = '''+diaVencStr+'''';
+
+      Try
+        DB_Ops.Active := false;
+        DB_Ops.SQL.Text := SQL_Query;
+        DB_Ops.Open;
+        DB_Ops.First;
+        while not DB_Ops.Eof do
+        begin
+          // Richard @ Informação de Cliente e Operação recuperada, agora enviamos o SMS/EMAIL
+
+          DB_Ops.Next;
+        end;
+      Except on E : Exception do
+        ShowMessage('Houve um erro: '+E.Message);
+      End;
+
+
+    end;
+  Lista_Temp.Next;
+  end;
+end;
+
+procedure TFormPrincipal.Timer_12hTimer(Sender: TObject);
+const
+  _SELECT = 'SELECT * FROM listas';
+begin
+  Try
+    // Richard @ Inicia buscando as listas do banco de dados
+    DB_Listas.Active := false;
+    DB_Listas.SQL.Text := _SELECT;
+    DB_Listas.Open;
+
+    DB_Listas.First;
+    Lista_Temp.Close;
+    Lista_Temp.CreateDataSet;
+    Lista_Temp.Open;
+
+    //        @ Salva as listas em uma tabela temporária na memória
+    while not DB_Listas.Eof do
+    begin
+      Lista_Temp.Append;
+      Lista_Temp.FieldByName('ID').Value := DB_Listas.FieldByName('id').Value;
+      Lista_Temp.FieldByName('ID_BANCO').Value := DB_Listas.FieldByName('id_banco').Value;
+      Lista_Temp.FieldByName('NOME').Value := DB_Listas.FieldByName('nome').Value;
+      Lista_Temp.FieldByName('TIPOEMAIL').Value := DB_Listas.FieldByName('tipoemail').Value;
+      Lista_Temp.FieldByName('DIASVENC').Value := DB_Listas.FieldByName('diasvenc').Value;
+      Lista_Temp.FieldByName('HORADISPARO').Value := DB_Listas.FieldByName('horadisparo').Value;
+      Lista_Temp.FieldByName('MENSAGEM').Value := DB_Listas.FieldByName('mensagem').Value;
+      Lista_Temp.FieldByName('TIPOCAMPANHA').Value := DB_Listas.FieldByName('tipocampanha').Value;
+      Lista_Temp.Post;
+
+      DB_Listas.Next;
+    end;
+  Except on E: Exception do
+    ShowMessage('Houve um erro: '+E.Message);
+  End;
+end;
+
+
 
 end.

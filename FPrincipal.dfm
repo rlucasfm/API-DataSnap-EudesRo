@@ -2,8 +2,8 @@ object FormPrincipal: TFormPrincipal
   Left = 271
   Top = 114
   Caption = 'EudesRo API RESTFul'
-  ClientHeight = 235
-  ClientWidth = 399
+  ClientHeight = 353
+  ClientWidth = 411
   Color = clBtnFace
   Font.Charset = DEFAULT_CHARSET
   Font.Color = clWindowText
@@ -21,12 +21,19 @@ object FormPrincipal: TFormPrincipal
     Height = 13
     Caption = 'Port'
   end
+  object Label2: TLabel
+    Left = 8
+    Top = 224
+    Width = 84
+    Height = 13
+    Caption = 'Listas carregadas'
+  end
   object ButtonStart: TButton
     Left = 24
     Top = 8
     Width = 75
     Height = 25
-    Caption = 'Start'
+    Caption = 'Iniciar'
     TabOrder = 0
     OnClick = ButtonStartClick
   end
@@ -35,7 +42,7 @@ object FormPrincipal: TFormPrincipal
     Top = 8
     Width = 75
     Height = 25
-    Caption = 'Stop'
+    Caption = 'Parar'
     TabOrder = 1
     OnClick = ButtonStopClick
   end
@@ -55,6 +62,19 @@ object FormPrincipal: TFormPrincipal
     Caption = 'Open Browser'
     TabOrder = 3
     OnClick = ButtonOpenBrowserClick
+  end
+  object DBGrid1: TDBGrid
+    Left = 8
+    Top = 243
+    Width = 395
+    Height = 102
+    DataSource = Lista_Source
+    TabOrder = 4
+    TitleFont.Charset = DEFAULT_CHARSET
+    TitleFont.Color = clWindowText
+    TitleFont.Height = -11
+    TitleFont.Name = 'Tahoma'
+    TitleFont.Style = []
   end
   object ApplicationEvents1: TApplicationEvents
     OnIdle = ApplicationEvents1Idle
@@ -102,5 +122,69 @@ object FormPrincipal: TFormPrincipal
       'SELECT * FROM clientes WHERE cpf = '#39'4877897410'#39)
     Left = 256
     Top = 88
+  end
+  object Timer_12h: TTimer
+    Interval = 10000
+    OnTimer = Timer_12hTimer
+    Left = 72
+    Top = 144
+  end
+  object DB_Listas: TFDQuery
+    Connection = DB_Connection
+    SQL.Strings = (
+      'SELECT * FROM clientes WHERE cpf = '#39'4877897410'#39)
+    Left = 16
+    Top = 144
+  end
+  object Lista_Temp: TClientDataSet
+    Aggregates = <>
+    Params = <>
+    Left = 16
+    Top = 160
+    object Lista_TempID: TIntegerField
+      FieldName = 'ID'
+    end
+    object Lista_TempID_BANCO: TIntegerField
+      FieldName = 'ID_BANCO'
+    end
+    object Lista_TempNOME: TStringField
+      FieldName = 'NOME'
+      Size = 128
+    end
+    object Lista_TempTIPOEMAIL: TIntegerField
+      FieldName = 'TIPOEMAIL'
+    end
+    object Lista_TempDIASVENC: TIntegerField
+      FieldName = 'DIASVENC'
+    end
+    object Lista_TempHORADISPARO: TTimeField
+      FieldName = 'HORADISPARO'
+    end
+    object Lista_TempMENSAGEM: TBlobField
+      FieldName = 'MENSAGEM'
+      Size = 512
+    end
+    object Lista_TempTIPOCAMPANHA: TStringField
+      FieldName = 'TIPOCAMPANHA'
+      Size = 8
+    end
+  end
+  object Lista_Source: TDataSource
+    DataSet = Lista_Temp
+    Left = 16
+    Top = 176
+  end
+  object Timer_10m: TTimer
+    Interval = 3000
+    OnTimer = Timer_10mTimer
+    Left = 128
+    Top = 136
+  end
+  object DB_Ops: TFDQuery
+    Connection = DB_Connection
+    SQL.Strings = (
+      'SELECT * FROM clientes WHERE cpf = '#39'4877897410'#39)
+    Left = 128
+    Top = 152
   end
 end
