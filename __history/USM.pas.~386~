@@ -108,10 +108,9 @@ begin
   end;
 end;
 
-
 function TSM.AcceptLista(const ID_LISTA: integer): TJSONObject;
 const
-  _UPDATE = 'UPDATE listas SET nome = :nome, tipoemail = :tipoemail, diasvenc = :diasvenc, horadisparo = :horadisparo, mensagem = :mensagem WHERE id = :id';
+  _UPDATE = 'UPDATE listas SET nome = :nome, tipoemail = :tipoemail, diasvenc = :diasvenc, horadisparo = :horadisparo, mensagem = :mensagem, tipocampanha = :tipocampanha WHERE id = :id';
 var
   WebModule   : TWebModule;
   stringJSON  : TArray<string>;
@@ -162,6 +161,7 @@ begin
     DB_Query.ParamByName('diasvenc').Value :=  listaObj.Values['diasVencimento'].Value;
     DB_Query.ParamByName('horadisparo').Value :=  listaObj.Values['horaDisparo'].Value;
     DB_Query.ParamByName('mensagem').Value :=  listaObj.Values['mensagemLista'].Value;
+    DB_Query.ParamByName('tipocampanha').Value :=  listaObj.Values['tipoCampanha'].Value;
 
     Try
       DB_Query.ExecSQL;
@@ -184,7 +184,7 @@ function TSM.CancelLista(const ID_LISTA: integer): TJSONObject;
 const
   _DELETE = 'DELETE FROM listas WHERE id = :id';
 begin
-  Result := JSONObject.Create;
+  Result := TJSONObject.Create;
   with FormPrincipal do
   begin
     DB_Query.Active := false;
@@ -193,7 +193,7 @@ begin
 
     Try
       DB_Query.ExecSQL;
-      Result.AddPair('Response', 'Lista atualizada com sucesso');
+      Result.AddPair('Response', 'Lista deletada com sucesso');
     Except on E : Exception do
       Result.AddPair('Response', E.Message);
     End;
@@ -226,7 +226,7 @@ begin
   begin
     DB_Query.Active := false;
     DB_Query.SQL.Text := _SELECT;
-    DB_Query.SQL.Add('WHERE id_banco = :id_banco');
+    DB_Query.SQL.Add('WHERE id_banco = :id_banco ORDER BY id');
     DB_Query.ParamByName('id_banco').Value := ID_BANCO;
     DB_Query.Open;
 
@@ -243,6 +243,7 @@ begin
       listaObj.AddPair('diasvenc', DB_Query.FieldByName('diasvenc').Value);
       listaObj.AddPair('horadisparo', DB_Query.FieldByName('horadisparo').Value);
       listaObj.AddPair('mensagem', DB_Query.FieldByName('mensagem').Value);
+      listaObj.AddPair('tipocampanha', DB_Query.FieldByName('tipocampanha').Value);
 
       Result.AddPair(inttostr(index),listaObj);
       DB_Query.Next;
@@ -455,7 +456,7 @@ end;
 
 function TSM.UpdateLista(ID_BANCO: integer): TJSONObject;
 const
-  _INSERT = 'INSERT INTO listas (id, id_banco, nome, tipoemail, diasvenc, horadisparo, mensagem) VALUES (:id, :id_banco, :nome, :tipoemail, :diasvenc, :horadisparo, :mensagem)';
+  _INSERT = 'INSERT INTO listas (id, id_banco, nome, tipoemail, diasvenc, horadisparo, mensagem, tipocampanha) VALUES (:id, :id_banco, :nome, :tipoemail, :diasvenc, :horadisparo, :mensagem, :tipocampanha)';
 var
   WebModule   : TWebModule;
   stringJSON  : TArray<string>;
@@ -509,7 +510,8 @@ begin
     DB_Query.ParamByName('tipoemail').Value :=  listaObj.Values['tipoEmail'].Value;
     DB_Query.ParamByName('diasvenc').Value :=  listaObj.Values['diasVencimento'].Value;
     DB_Query.ParamByName('horadisparo').Value :=  listaObj.Values['horaDisparo'].Value;
-    DB_Query.ParamByName('mensagem').Value :=  listaObj.Values['mensagemLista'].Value;
+    DB_Query.ParamByName('mensagem').Value :=  AnsiToUtf8(listaObj.Values['mensagemLista'].Value);
+    DB_Query.ParamByName('tipocampanha').Value :=  listaObj.Values['tipoCampanha'].Value;
 
     Try
       DB_Query.ExecSQL;

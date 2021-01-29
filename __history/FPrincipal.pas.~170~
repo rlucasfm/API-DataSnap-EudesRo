@@ -154,9 +154,17 @@ var
   diaVenc     : TDateTime;
   diaVencStr  : string;
   permTempo   : integer;
+  tipoCampanha: string;
+  mensagemSubs: string;
+  Splitted    : TArray<string>;
+  pnomeCliente: string;
+  pnomeAluno  : string;
 begin
-  permTempo := 60;
+  // Richard @ Tempo de permissividade entre a hora da lista e a hora atual.
+  permTempo := 10;
 
+  // Richard @ Percorre a tabela temporária de listas em memória,
+  //         @ Checando se está na hora de enviar alguma lista
   Lista_Temp.First;
   horaAgora := Now;
 
@@ -165,10 +173,11 @@ begin
   horaDisparo := Lista_Temp.FieldByName('HORADISPARO').Value;
     if (CompareTime(horaDisparo,IncMinute(horaAgora, -permTempo)) > 0) AND (CompareTime(horaDisparo,IncMinute(horaAgora, permTempo)) < 0) then
     begin
-      // Está na hora de executar a lista...
+      // Richard @ Se estiver na hora de enviar a lista, busca todas operações
+      //         @ onde a data de vencimento condiz com a regra da lista.
       diaVenc     := IncDay(horaAgora, Lista_Temp.FieldByName('DIASVENC').AsInteger);
       diaVencStr  := StringReplace(DateToStr(diaVenc), '/', '.', [rfReplaceAll, rfIgnoreCase]);
-      SQL_Query := 'SELECT DISTINCT c.nome, o.tipooperacao, o.datavencto, o.valornominal, o.condnegociais FROM operacoes o ' +
+      SQL_Query := 'SELECT DISTINCT c.nome, o.tipooperacao, o.datavencto, o.valornominal, o.condnegociais, o.nroperacao FROM operacoes o ' +
                    'INNER JOIN clientes c ON c.codigo = o.cliente ' +
                    'INNER JOIN listas l ON l.id_banco = o.banco ' +
                    'WHERE o.datavencto = '''+diaVencStr+'''';
@@ -180,7 +189,38 @@ begin
         DB_Ops.First;
         while not DB_Ops.Eof do
         begin
-          // Informação de Cliente e Operação recuperada, agora enviamos o SMS/EMAIL
+          // Richard @ Informação de Cliente e Operação recuperada, agora enviamos o SMS/EMAIL
+          //         @ Verificando se a campanha é SMS ou EMAIL...
+          tipoCampanha := Lista_Temp.FieldByName('TIPOCAMPANHA').AsString;
+
+          if tipoCampanha = 'sms' then
+          //         @ Campanha é SMS
+          begin
+            //       @ Substitui os identificadores
+            mensagemSubs := StringReplace(Lista_Temp.FieldByName('MENSAGEM').AsString, '$nomeop$', DB_Ops.FieldByName('tipooperacao').AsString, [rfReplaceAll, rfIgnoreCase]);
+            mensagemSubs := StringReplace(mensagemSubs, '$datavenc$', DB_Ops.FieldByName('datavencto').AsString, [rfReplaceAll, rfIgnoreCase]);
+            mensagemSubs := StringReplace(mensagemSubs, '$valorop$', DB_Ops.FieldByName('valornominal').AsString, [rfReplaceAll, rfIgnoreCase]);
+
+            //       @ Conseguir apenas os primeiros nomes de cliente e aluno
+            pnomeCliente  := DB_Ops.FieldByName('nome').AsString;
+            pnomeAluno    := DB_Ops.FieldByName('condnegociais').AsString;
+            Splitted      := pnomeCliente.Split([' ']);
+            mensagemSubs  := StringReplace(mensagemSubs, '$nomecliente$', Splitted[0]+' '+Splitted[1], [rfReplaceAll, rfIgnoreCase]);
+            Splitted      := pnomeAluno.Split([' ']);
+            mensagemSubs  := StringReplace(mensagemSubs, '$nomealuno$', Splitted[0]+' '+Splitted[1], [rfReplaceAll, rfIgnoreCase]);
+            //       @ Correção de UNICODE vindo do DB Firebird
+            mensagemSubs  := StringReplace(mensagemSubs, 'u00e1', 'á', [rfReplaceAll, rfIgnoreCase]);
+            mensagemSubs  := StringReplace(mensagemSubs, 'u00ea', 'ê', [rfReplaceAll, rfIgnoreCase]);
+            mensagemSubs  := StringReplace(mensagemSubs, 'u00c1', 'é', [rfReplaceAll, rfIgnoreCase]);
+            mensagemSubs  := StringReplace(mensagemSubs, 'u00c1', 'Á', [rfReplaceAll, rfIgnoreCase]);
+            mensagemSubs  := StringReplace(mensagemSubs, 'u00ca', 'Ê', [rfReplaceAll, rfIgnoreCase]);
+            mensagemSubs  := StringReplace(mensagemSubs, 'u00c9', 'É', [rfReplaceAll, rfIgnoreCase]);
+            showmessage(mensagemSubs);
+          end
+          //         @ Campanha é EMAIL
+          else
+          begin
+          end;
 
           DB_Ops.Next;
         end;
@@ -192,8 +232,6 @@ begin
     end;
   Lista_Temp.Next;
   end;
-
-  //showmessage(Lista_Temp.FieldByName('HORADISPARO').Value);
 end;
 
 procedure TFormPrincipal.Timer_12hTimer(Sender: TObject);
@@ -201,6 +239,7 @@ const
   _SELECT = 'SELECT * FROM listas';
 begin
   Try
+    // Richard @ Inicia buscando as listas do banco de dados
     DB_Listas.Active := false;
     DB_Listas.SQL.Text := _SELECT;
     DB_Listas.Open;
@@ -209,6 +248,8 @@ begin
     Lista_Temp.Close;
     Lista_Temp.CreateDataSet;
     Lista_Temp.Open;
+
+    //        @ Salva as listas em uma tabela temporária na memória
     while not DB_Listas.Eof do
     begin
       Lista_Temp.Append;
@@ -227,8 +268,6 @@ begin
   Except on E: Exception do
     ShowMessage('Houve um erro: '+E.Message);
   End;
-
-
 end;
 
 

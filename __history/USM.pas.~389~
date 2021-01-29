@@ -108,7 +108,6 @@ begin
   end;
 end;
 
-
 function TSM.AcceptLista(const ID_LISTA: integer): TJSONObject;
 const
   _UPDATE = 'UPDATE listas SET nome = :nome, tipoemail = :tipoemail, diasvenc = :diasvenc, horadisparo = :horadisparo, mensagem = :mensagem, tipocampanha = :tipocampanha WHERE id = :id';
@@ -161,7 +160,7 @@ begin
     DB_Query.ParamByName('tipoemail').Value :=  listaObj.Values['tipoEmail'].Value;
     DB_Query.ParamByName('diasvenc').Value :=  listaObj.Values['diasVencimento'].Value;
     DB_Query.ParamByName('horadisparo').Value :=  listaObj.Values['horaDisparo'].Value;
-    DB_Query.ParamByName('mensagem').Value :=  listaObj.Values['mensagemLista'].Value;
+    DB_Query.ParamByName('mensagem').Value :=  UnicodeToUtf8(listaObj.Values['mensagemLista'].Value);
     DB_Query.ParamByName('tipocampanha').Value :=  listaObj.Values['tipoCampanha'].Value;
 
     Try
@@ -227,7 +226,7 @@ begin
   begin
     DB_Query.Active := false;
     DB_Query.SQL.Text := _SELECT;
-    DB_Query.SQL.Add('WHERE id_banco = :id_banco');
+    DB_Query.SQL.Add('WHERE id_banco = :id_banco ORDER BY id');
     DB_Query.ParamByName('id_banco').Value := ID_BANCO;
     DB_Query.Open;
 
