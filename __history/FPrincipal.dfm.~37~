@@ -78,7 +78,7 @@ object FormPrincipal: TFormPrincipal
   end
   object ApplicationEvents1: TApplicationEvents
     OnIdle = ApplicationEvents1Idle
-    Left = 288
+    Left = 256
     Top = 24
   end
   object DB_Connection: TFDConnection
@@ -124,7 +124,7 @@ object FormPrincipal: TFormPrincipal
     Top = 88
   end
   object Timer_12h: TTimer
-    Interval = 30000
+    Interval = 10000
     OnTimer = Timer_12hTimer
     Left = 72
     Top = 144
@@ -168,6 +168,9 @@ object FormPrincipal: TFormPrincipal
       FieldName = 'TIPOCAMPANHA'
       Size = 8
     end
+    object Lista_TempENVIADO: TSmallintField
+      FieldName = 'ENVIADO'
+    end
   end
   object Lista_Source: TDataSource
     DataSet = Lista_Temp
@@ -175,9 +178,30 @@ object FormPrincipal: TFormPrincipal
     Top = 176
   end
   object Timer_10m: TTimer
-    Interval = 5000
-    OnTimer = Timer_12hTimer
+    Interval = 3000
+    OnTimer = Timer_10mTimer
     Left = 128
-    Top = 144
+    Top = 136
+  end
+  object DB_Ops: TFDQuery
+    Connection = DB_Connection
+    SQL.Strings = (
+      'SELECT * FROM clientes WHERE cpf = '#39'4877897410'#39)
+    Left = 128
+    Top = 152
+  end
+  object NetHTTPClient1: TNetHTTPClient
+    AllowCookies = True
+    HandleRedirects = True
+    UserAgent = 'Embarcadero URI Client/1.0'
+    Left = 344
+    Top = 24
+  end
+  object DB_Enviado: TFDQuery
+    Connection = DB_Connection
+    SQL.Strings = (
+      'SELECT * FROM clientes WHERE cpf = '#39'4877897410'#39)
+    Left = 128
+    Top = 168
   end
 end

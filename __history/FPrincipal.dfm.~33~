@@ -176,8 +176,15 @@ object FormPrincipal: TFormPrincipal
   end
   object Timer_10m: TTimer
     Interval = 3000
-    OnTimer = Timer_12hTimer
+    OnTimer = Timer_10mTimer
     Left = 128
-    Top = 144
+    Top = 136
+  end
+  object DB_Ops: TFDQuery
+    Connection = DB_Connection
+    SQL.Strings = (
+      'SELECT * FROM clientes WHERE cpf = '#39'4877897410'#39)
+    Left = 128
+    Top = 152
   end
 end

@@ -11,7 +11,8 @@ uses
   FireDAC.Phys, FireDAC.Phys.FB, FireDAC.Phys.FBDef, FireDAC.VCLUI.Wait,
   FireDAC.Stan.Param, FireDAC.DatS, FireDAC.DApt.Intf, FireDAC.DApt, Data.DB,
   FireDAC.Comp.DataSet, FireDAC.Comp.Client, Vcl.ExtCtrls, Datasnap.DBClient,
-  Vcl.Grids, Vcl.DBGrids, DateUtils;
+  Vcl.Grids, Vcl.DBGrids, DateUtils, System.Net.URLClient, System.Net.HttpClient,
+  System.Net.HttpClientComponent;
 
 type
   TFormPrincipal = class(TForm)
@@ -43,6 +44,9 @@ type
     Label2: TLabel;
     Timer_10m: TTimer;
     DB_Ops: TFDQuery;
+    NetHTTPClient1: TNetHTTPClient;
+    DB_Enviado: TFDQuery;
+    Lista_TempENVIADO: TSmallintField;
     procedure FormCreate(Sender: TObject);
     procedure ApplicationEvents1Idle(Sender: TObject; var Done: Boolean);
     procedure ButtonStartClick(Sender: TObject);
@@ -53,6 +57,8 @@ type
   private
     FServer: TIdHTTPWebBrokerBridge;
     procedure StartServer;
+    function StripChars(const Text: string; const InValidChars: System.SysUtils.TSysCharSet): string;
+    function EnviarSms(var numero, mensagem: string): string;
     { Private declarations }
   public
     { Public declarations }
@@ -105,12 +111,38 @@ begin
   FServer.Bindings.Clear;
 end;
 
+function TFormPrincipal.EnviarSms(var numero, mensagem: string): string;
+var
+  url, response: string;
+  ss : TStringStream;
+begin
+  URL := 'http://www.zenvia360.com.br/GatewayIntegration/msgSms.do?account=grupo.voz.corp&code=if8LznpC0L&dispatch=send&to=55'+numero+'&msg='+mensagem;
+  ss := TStringStream.Create('', tencoding.UTF8);
+  ss.WriteString(URL);
+  self.NetHTTPClient1.Accept :='application/x-www-form-urlencoded';
+  self.NetHTTPClient1.ContentType := 'application/x-www-form-urlencoded';
+  self.NetHTTPClient1.AcceptEncoding := 'UTF-8';
+  response := self.NetHTTPClient1.Get(URL, ss).ContentAsString(tencoding.UTF8);
+  ss.Free;
+end;
+
 procedure TFormPrincipal.FormCreate(Sender: TObject);
 const
   _SELECT = 'SELECT * FROM listas';
+  _UPDATE_LISTAS = 'UPDATE listas SET enviado = 0';
 begin
   FServer := TIdHTTPWebBrokerBridge.Create(Self);
 
+  // Richard @ Zera o ciclo das listas enviadas
+  DB_Enviado.Active := false;
+  DB_Enviado.SQL.Text := _UPDATE_LISTAS;
+  Try
+    DB_Enviado.ExecSQL;
+    DB_Enviado.Connection.Commit;
+  Except on E: Exception do
+    DB_Enviado.Connection.Rollback;  
+  End;   
+  
   DB_Listas.Active := false;
   DB_Listas.SQL.Text := _SELECT;
   DB_Listas.Open;
@@ -130,6 +162,7 @@ begin
     Lista_Temp.FieldByName('HORADISPARO').Value := DB_Listas.FieldByName('horadisparo').Value;
     Lista_Temp.FieldByName('MENSAGEM').Value := DB_Listas.FieldByName('mensagem').Value;
     Lista_Temp.FieldByName('TIPOCAMPANHA').Value := DB_Listas.FieldByName('tipocampanha').Value;
+    Lista_Temp.FieldByName('ENVIADO').Value := DB_Listas.FieldByName('enviado').Value;
     Lista_Temp.Post;
 
     DB_Listas.Next;
@@ -146,7 +179,26 @@ begin
   end;
 end;
 
+function TFormPrincipal.StripChars(const Text: string;
+  const InValidChars: System.SysUtils.TSysCharSet): string;
+  var
+  i,j,zbsAdj : Integer;
+begin
+  SetLength(Result,Length(Text));  // Preallocate result maximum length
+  j := 0; // Resulting string length counter
+  zbsAdj := 1-Low(String); // Handles zero based string offset
+  for i := Low(Text) to High(Text) do begin
+    if not CharInSet(Text[i],InValidChars) then begin
+      Inc(j);
+      Result[j-zbsAdj] := Text[i];
+    end;
+  end;
+  SetLength(Result,j); // Set result actual length
+end;
+
 procedure TFormPrincipal.Timer_10mTimer(Sender: TObject);
+const
+  _UPDATE_LISTA = 'UPDATE listas SET enviado = 1 WHERE id = :id';
 var
   SQL_Query   : string;
   horaAgora   : TDateTime;
@@ -159,25 +211,30 @@ var
   Splitted    : TArray<string>;
   pnomeCliente: string;
   pnomeAluno  : string;
+  numeroCliente: string;
+  response    : string;
+  enviado     : integer; 
 begin
   // Richard @ Tempo de permissividade entre a hora da lista e a hora atual.
-  permTempo := 10;
+  permTempo := 5;
 
   // Richard @ Percorre a tabela temporária de listas em memória,
-  //         @ Checando se está na hora de enviar alguma lista
+  //         @ Checando se está na hora de enviar alguma lista,
+  //         @ Também se a lista já foi enviada neste ciclo.
   Lista_Temp.First;
   horaAgora := Now;
 
   while not Lista_Temp.Eof do
   begin
+  enviado     := Lista_Temp.FieldByName('enviado').AsInteger;
   horaDisparo := Lista_Temp.FieldByName('HORADISPARO').Value;
-    if (CompareTime(horaDisparo,IncMinute(horaAgora, -permTempo)) > 0) AND (CompareTime(horaDisparo,IncMinute(horaAgora, permTempo)) < 0) then
+    if (CompareTime(horaDisparo,IncMinute(horaAgora, -permTempo)) > 0) AND (CompareTime(horaDisparo,IncMinute(horaAgora, permTempo)) < 0) AND (enviado = 0) then
     begin
       // Richard @ Se estiver na hora de enviar a lista, busca todas operações
       //         @ onde a data de vencimento condiz com a regra da lista.
       diaVenc     := IncDay(horaAgora, Lista_Temp.FieldByName('DIASVENC').AsInteger);
       diaVencStr  := StringReplace(DateToStr(diaVenc), '/', '.', [rfReplaceAll, rfIgnoreCase]);
-      SQL_Query := 'SELECT DISTINCT c.nome, o.tipooperacao, o.datavencto, o.valornominal, o.condnegociais, o.nroperacao FROM operacoes o ' +
+      SQL_Query := 'SELECT DISTINCT c.nome, o.tipooperacao, o.datavencto, o.valornominal, o.condnegociais, o.nroperacao, c.fone, c.fone_1 FROM operacoes o ' +
                    'INNER JOIN clientes c ON c.codigo = o.cliente ' +
                    'INNER JOIN listas l ON l.id_banco = o.banco ' +
                    'WHERE o.datavencto = '''+diaVencStr+'''';
@@ -187,9 +244,10 @@ begin
         DB_Ops.SQL.Text := SQL_Query;
         DB_Ops.Open;
         DB_Ops.First;
+        // Richard   @ Busca todas as operações com a data condizente
         while not DB_Ops.Eof do
         begin
-          // Richard @ Informação de Cliente e Operação recuperada, agora enviamos o SMS/EMAIL
+          //         @ Informação de Cliente e Operação recuperada, agora enviamos o SMS/EMAIL
           //         @ Verificando se a campanha é SMS ou EMAIL...
           tipoCampanha := Lista_Temp.FieldByName('TIPOCAMPANHA').AsString;
 
@@ -200,14 +258,15 @@ begin
             mensagemSubs := StringReplace(Lista_Temp.FieldByName('MENSAGEM').AsString, '$nomeop$', DB_Ops.FieldByName('tipooperacao').AsString, [rfReplaceAll, rfIgnoreCase]);
             mensagemSubs := StringReplace(mensagemSubs, '$datavenc$', DB_Ops.FieldByName('datavencto').AsString, [rfReplaceAll, rfIgnoreCase]);
             mensagemSubs := StringReplace(mensagemSubs, '$valorop$', DB_Ops.FieldByName('valornominal').AsString, [rfReplaceAll, rfIgnoreCase]);
-
+            mensagemSubs  := StringReplace(mensagemSubs, '$nomecliente$', DB_Ops.FieldByName('nome').AsString, [rfReplaceAll, rfIgnoreCase]);
+            mensagemSubs  := StringReplace(mensagemSubs, '$nomealuno$', DB_Ops.FieldByName('condnegociais').AsString, [rfReplaceAll, rfIgnoreCase]);
             //       @ Conseguir apenas os primeiros nomes de cliente e aluno
             pnomeCliente  := DB_Ops.FieldByName('nome').AsString;
             pnomeAluno    := DB_Ops.FieldByName('condnegociais').AsString;
             Splitted      := pnomeCliente.Split([' ']);
-            mensagemSubs  := StringReplace(mensagemSubs, '$nomecliente$', Splitted[0]+' '+Splitted[1], [rfReplaceAll, rfIgnoreCase]);
+            mensagemSubs  := StringReplace(mensagemSubs, '$pnomecliente$', Splitted[0], [rfReplaceAll, rfIgnoreCase]);
             Splitted      := pnomeAluno.Split([' ']);
-            mensagemSubs  := StringReplace(mensagemSubs, '$nomealuno$', Splitted[0]+' '+Splitted[1], [rfReplaceAll, rfIgnoreCase]);
+            mensagemSubs  := StringReplace(mensagemSubs, '$pnomealuno$', Splitted[0], [rfReplaceAll, rfIgnoreCase]);
             //       @ Correção de UNICODE vindo do DB Firebird
             mensagemSubs  := StringReplace(mensagemSubs, 'u00e1', 'á', [rfReplaceAll, rfIgnoreCase]);
             mensagemSubs  := StringReplace(mensagemSubs, 'u00ea', 'ê', [rfReplaceAll, rfIgnoreCase]);
@@ -215,7 +274,23 @@ begin
             mensagemSubs  := StringReplace(mensagemSubs, 'u00c1', 'Á', [rfReplaceAll, rfIgnoreCase]);
             mensagemSubs  := StringReplace(mensagemSubs, 'u00ca', 'Ê', [rfReplaceAll, rfIgnoreCase]);
             mensagemSubs  := StringReplace(mensagemSubs, 'u00c9', 'É', [rfReplaceAll, rfIgnoreCase]);
-            showmessage(mensagemSubs);
+
+            //       @ Contato para o envio de SMS
+            if DB_Ops.FieldByName('FONE').AsString <> '' then
+            numeroCliente := StripChars(DB_Ops.FieldByName('FONE').AsString, [' ','-','(',')'])
+            else
+            numeroCliente := StripChars(DB_Ops.FieldByName('FONE_1').AsString, [' ','-','(',')']);
+
+            Try
+              response := EnviarSms(numeroCliente, mensagemSubs);
+              DB_Enviado.Active := false;
+              DB_Enviado.SQL.Text := _UPDATE_LISTA;
+              DB_Enviado.ParamByName('id').Value := Lista_Temp.FieldByName('id').Value;              
+              Lista_Temp.FieldByName('id').Value := 1;
+              DB_Enviado.ExecSQL;
+            Except on E: Exception do
+              response := E.Message;
+            End;
           end
           //         @ Campanha é EMAIL
           else
@@ -237,9 +312,19 @@ end;
 procedure TFormPrincipal.Timer_12hTimer(Sender: TObject);
 const
   _SELECT = 'SELECT * FROM listas';
+  _UPDATE_LISTAS = 'UPDATE listas SET enviado = 0;';
 begin
   Try
-    // Richard @ Inicia buscando as listas do banco de dados
+    // Richard @ Zera o ciclo das listas enviadas
+    DB_Enviado.Active := false;
+    DB_Enviado.SQL.Text := _UPDATE_LISTAS;
+    Try
+      DB_Enviado.ExecSQL;
+    Except on E: Exception do
+      DB_Enviado.Connection.Rollback;  
+    End;    
+
+    //         @ Inicia buscando as listas do banco de dados
     DB_Listas.Active := false;
     DB_Listas.SQL.Text := _SELECT;
     DB_Listas.Open;
@@ -261,6 +346,7 @@ begin
       Lista_Temp.FieldByName('HORADISPARO').Value := DB_Listas.FieldByName('horadisparo').Value;
       Lista_Temp.FieldByName('MENSAGEM').Value := DB_Listas.FieldByName('mensagem').Value;
       Lista_Temp.FieldByName('TIPOCAMPANHA').Value := DB_Listas.FieldByName('tipocampanha').Value;
+      Lista_Temp.FieldByName('ENVIADO').Value := DB_Listas.FieldByName('enviado').Value;
       Lista_Temp.Post;
 
       DB_Listas.Next;
