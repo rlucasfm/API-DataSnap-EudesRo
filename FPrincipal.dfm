@@ -3,7 +3,7 @@ object FormPrincipal: TFormPrincipal
   Top = 114
   Caption = 'EudesRo API RESTFul'
   ClientHeight = 353
-  ClientWidth = 411
+  ClientWidth = 691
   Color = clBtnFace
   Font.Charset = DEFAULT_CHARSET
   Font.Color = clWindowText
@@ -27,6 +27,13 @@ object FormPrincipal: TFormPrincipal
     Width = 84
     Height = 13
     Caption = 'Listas carregadas'
+  end
+  object Label3: TLabel
+    Left = 416
+    Top = 5
+    Width = 17
+    Height = 13
+    Caption = 'Log'
   end
   object ButtonStart: TButton
     Left = 24
@@ -75,6 +82,13 @@ object FormPrincipal: TFormPrincipal
     TitleFont.Height = -11
     TitleFont.Name = 'Tahoma'
     TitleFont.Style = []
+  end
+  object Memo_log: TMemo
+    Left = 416
+    Top = 24
+    Width = 267
+    Height = 321
+    TabOrder = 5
   end
   object ApplicationEvents1: TApplicationEvents
     OnIdle = ApplicationEvents1Idle
@@ -197,7 +211,7 @@ object FormPrincipal: TFormPrincipal
     Left = 344
     Top = 24
   end
-  object DB_Enviado: TFDQuery
+  object DB_Banco: TFDQuery
     Connection = DB_Connection
     SQL.Strings = (
       'SELECT * FROM clientes WHERE cpf = '#39'4877897410'#39)
