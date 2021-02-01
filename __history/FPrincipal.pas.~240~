@@ -48,6 +48,7 @@ type
     Lista_TempENVIADO: TSmallintField;
     Memo_log: TMemo;
     Label3: TLabel;
+    DB_Banco: TFDQuery;
     procedure FormCreate(Sender: TObject);
     procedure ApplicationEvents1Idle(Sender: TObject; var Done: Boolean);
     procedure ButtonStartClick(Sender: TObject);
@@ -60,7 +61,7 @@ type
     procedure StartServer;
     function StripChars(const Text: string; const InValidChars: System.SysUtils.TSysCharSet): string;
     function EnviarSms(var numero, mensagem: string): string;
-    function EnviarEmail(var nome_cliente, email_cliente, nome_banco, id_email): string;
+    function EnviarEmail(var nome_cliente, email_cliente, nome_banco, id_email : string): string;
     { Private declarations }
   public
     { Public declarations }
@@ -98,6 +99,7 @@ end;
 procedure TFormPrincipal.ButtonStartClick(Sender: TObject);
 begin
   StartServer;
+  Memo_log.Lines.Add('API Iniciada na porta: '+EditPort.Text);
 end;
 
 procedure TerminateThreads;
@@ -111,15 +113,19 @@ begin
   TerminateThreads;
   FServer.Active := False;
   FServer.Bindings.Clear;
+  Memo_log.Lines.Add('API fechada');
 end;
 
 function TFormPrincipal.EnviarEmail(var nome_cliente, email_cliente, nome_banco,
-  id_email): string;
+  id_email : string): string;
 var
   url: string;
   ss : TStringStream;
 begin
   URL := 'https://www.grupovoz.net.br/email/send/'+nome_cliente+'/'+email_cliente+'/'+nome_banco+'/'+id_email;
+  // URL para Pipedream - Teste
+  //URL := 'https://endofdg5rkj3qrw.m.pipedream.net/'+nome_cliente+'/'+email_cliente+'/'+nome_banco+'/'+id_email;
+
   ss := TStringStream.Create('', tencoding.UTF8);
   ss.WriteString(URL);
   self.NetHTTPClient1.Accept :='application/x-www-form-urlencoded';
@@ -220,9 +226,12 @@ var
   pnomeAluno  : string;
   numeroCliente: string;
   response    : string;
-  enviado     : integer; 
+  enviado     : integer;
+  email_cliente: string;
+  id_email    : string;
+  nome_banco  : string;
 begin
-  // Richard @ Tempo de permissividade entre a hora da lista e a hora atual.
+  // Richard @ Tempo de permissividade entre a hora da lista e a hora atual em minutos.
   permTempo := 5;
 
   // Richard @ Percorre a tabela temporária de listas em memória,
@@ -250,7 +259,7 @@ begin
       //         @ onde a data de vencimento condiz com a regra da lista.
       diaVenc     := IncDay(horaAgora, Lista_Temp.FieldByName('DIASVENC').AsInteger);
       diaVencStr  := StringReplace(DateToStr(diaVenc), '/', '.', [rfReplaceAll, rfIgnoreCase]);
-      SQL_Query := 'SELECT DISTINCT c.nome, o.tipooperacao, o.datavencto, o.valornominal, o.condnegociais, o.nroperacao, c.fone, c.fone_1 FROM operacoes o ' +
+      SQL_Query := 'SELECT DISTINCT c.nome, o.tipooperacao, o.datavencto, o.valornominal, o.condnegociais, o.nroperacao, c.fone, c.fone_1, c.e_mail FROM operacoes o ' +
                    'INNER JOIN clientes c ON c.codigo = o.cliente ' +
                    'INNER JOIN listas l ON l.id_banco = o.banco ' +
                    'WHERE o.datavencto = '''+diaVencStr+'''';
@@ -300,7 +309,7 @@ begin
             //       @ Envia o SMS
             Try
               response := EnviarSms(numeroCliente, mensagemSubs);
-              Memo_log.Lines.Add('Mensagem enviada para: '+numeroCliente);
+              Memo_log.Lines.Add('Mensagem enviada para: '+numeroCliente+' Response: '+response);
             Except on E : Exception do
               Memo_log.Lines.Add(E.Message);
             End;
@@ -309,6 +318,31 @@ begin
           //         @ Campanha é EMAIL
           else
           begin
+            pnomeCliente  := DB_Ops.FieldByName('nome').AsString;
+            email_cliente := DB_Ops.FieldByName('e_mail').AsString;
+            id_email      := Lista_Temp.FieldByName('TIPOEMAIL').AsString;
+            nome_banco    := Lista_Temp.FieldByName('ID_BANCO').AsString;
+
+            //       @ Recuperar o nome do Banco pelo ID
+            DB_Banco.Active := false;
+            DB_Banco.SQL.Text := 'SELECT nome FROM bancos WHERE id = '+Lista_Temp.FieldByName('ID_BANCO').AsString;
+            Try
+              DB_Banco.Open;
+              nome_banco := DB_Banco.FieldByName('nome').AsString;
+              DB_Banco.Close;
+            Except on E: Exception do
+            begin
+              nome_banco := ' ';
+              Memo_log.Lines.Add(E.Message);
+            end;
+            End;
+
+            Try
+              response := EnviarEmail(pnomeCliente, email_cliente, nome_banco, id_email);
+              Memo_log.Lines.Add('Email enviado para: '+email_cliente+' Response: '+response);
+            Except on E: Exception do
+              Memo_log.Lines.Add(E.Message);
+            End;
           end;
 
           DB_Ops.Next;

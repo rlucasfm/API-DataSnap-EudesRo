@@ -99,6 +99,7 @@ end;
 procedure TFormPrincipal.ButtonStartClick(Sender: TObject);
 begin
   StartServer;
+  Memo_log.Lines.Add('API Iniciada na porta: '+EditPort.Text);
 end;
 
 procedure TerminateThreads;
@@ -112,6 +113,7 @@ begin
   TerminateThreads;
   FServer.Active := False;
   FServer.Bindings.Clear;
+  Memo_log.Lines.Add('API fechada');
 end;
 
 function TFormPrincipal.EnviarEmail(var nome_cliente, email_cliente, nome_banco,
@@ -283,6 +285,7 @@ begin
             mensagemSubs := StringReplace(mensagemSubs, '$valorop$', DB_Ops.FieldByName('valornominal').AsString, [rfReplaceAll, rfIgnoreCase]);
             mensagemSubs  := StringReplace(mensagemSubs, '$nomecliente$', DB_Ops.FieldByName('nome').AsString, [rfReplaceAll, rfIgnoreCase]);
             mensagemSubs  := StringReplace(mensagemSubs, '$nomealuno$', DB_Ops.FieldByName('condnegociais').AsString, [rfReplaceAll, rfIgnoreCase]);
+            mensagemSubs  := StringReplace(mensagemSubs, '$numeroop$', DB_Ops.FieldByName('nroperacao').AsString, [rfReplaceAll, rfIgnoreCase]);
             //       @ Conseguir apenas os primeiros nomes de cliente e aluno
             pnomeCliente  := DB_Ops.FieldByName('nome').AsString;
             pnomeAluno    := DB_Ops.FieldByName('condnegociais').AsString;
@@ -329,7 +332,10 @@ begin
               nome_banco := DB_Banco.FieldByName('nome').AsString;
               DB_Banco.Close;
             Except on E: Exception do
+            begin
+              nome_banco := ' ';
               Memo_log.Lines.Add(E.Message);
+            end;
             End;
 
             Try
