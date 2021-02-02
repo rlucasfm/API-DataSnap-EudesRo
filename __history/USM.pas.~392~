@@ -160,7 +160,7 @@ begin
     DB_Query.ParamByName('tipoemail').Value :=  listaObj.Values['tipoEmail'].Value;
     DB_Query.ParamByName('diasvenc').Value :=  listaObj.Values['diasVencimento'].Value;
     DB_Query.ParamByName('horadisparo').Value :=  listaObj.Values['horaDisparo'].Value;
-    DB_Query.ParamByName('mensagem').Value :=  UTF8Encode(listaObj.Values['mensagemLista'].Value);
+    DB_Query.ParamByName('mensagem').Value :=  listaObj.Values['mensagemLista'].Value;
     DB_Query.ParamByName('tipocampanha').Value :=  listaObj.Values['tipoCampanha'].Value;
 
     Try
@@ -388,6 +388,7 @@ begin
           Try
             DB_Query.ExecSQL;
             DB_Query.Connection.Commit;
+            Memo_log.Lines.Add('Tabela importada');
           Except on E : Exception do
             Result.AddPair('Exception', E.Message);
           End;
@@ -516,6 +517,7 @@ begin
     Try
       DB_Query.ExecSQL;
       Result.AddPair('Response', 'Lista cadastrada com sucesso');
+      Memo_log.Lines.Add('Lista cadastrada');
     Except on E : Exception do
       Result.AddPair('Exception', E.Message);
     End;

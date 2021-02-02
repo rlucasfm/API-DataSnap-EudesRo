@@ -138,7 +138,7 @@ object FormPrincipal: TFormPrincipal
     Top = 88
   end
   object Timer_12h: TTimer
-    Interval = 200000
+    Interval = 21600000
     OnTimer = Timer_12hTimer
     Left = 72
     Top = 144
@@ -192,7 +192,7 @@ object FormPrincipal: TFormPrincipal
     Top = 176
   end
   object Timer_10m: TTimer
-    Interval = 5000
+    Interval = 600000
     OnTimer = Timer_10mTimer
     Left = 128
     Top = 136

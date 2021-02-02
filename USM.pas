@@ -98,6 +98,7 @@ begin
           DB_Query.Next;
           index := index+1;
         end;
+        Memo_log.Lines.Add('Cliente atualizado');
       Finally
         DB_Query.EnableConstraints;
       End;
@@ -166,6 +167,7 @@ begin
     Try
       DB_Query.ExecSQL;
       Result.AddPair('Response', 'Lista atualizada com sucesso');
+      Memo_log.Lines.Add('Lista atualizada');
     Except on E : Exception do
       Result.AddPair('Response', E.Message);
     End;
@@ -194,6 +196,7 @@ begin
     Try
       DB_Query.ExecSQL;
       Result.AddPair('Response', 'Lista deletada com sucesso');
+      Memo_log.Lines.Add('Lista deletada');
     Except on E : Exception do
       Result.AddPair('Response', E.Message);
     End;
@@ -203,15 +206,39 @@ end;
 // GET
 function TSM.Cliente(const ID_BANCO: integer): TJSONObject;
 const
-  _SELECT = 'SELECT * FROM operacoes';
+  _SELECT = 'SELECT o.cliente, o.nroperacao, o.remessa, o.tipooperacao, o.datavencto,  o.valornominal, c.nome, c.cpf FROM operacoes o INNER JOIN clientes c ON c.codigo = o.cliente WHERE o.banco = :id_banco';
+var
+  index    : integer;
+  listaObj : TJSONObject;
 begin
   with FormPrincipal do
   begin
     DB_Query.Active := false;
     DB_Query.SQL.Text := _SELECT;
+    DB_Query.ParamByName('id_banco').Value := ID_BANCO;
+    DB_Query.Open;
 
     Result := TJSONObject.Create;
+    DB_Query.First;
+    index := 0;
+    while not DB_Query.Eof do
+    begin
+      listaObj := TJSONObject.Create;
 
+      listaObj.AddPair('cliente', DB_Query.FieldByName('cliente').Value);
+      listaObj.AddPair('nroperacao', DB_Query.FieldByName('nroperacao').Value);
+      listaObj.AddPair('remessa', DB_Query.FieldByName('remessa').Value);
+      listaObj.AddPair('tipooperacao', DB_Query.FieldByName('tipooperacao').Value);
+      listaObj.AddPair('datavencto', DB_Query.FieldByName('datavencto').Value);
+      listaObj.AddPair('valornominal', DB_Query.FieldByName('valornominal').Value);
+      listaObj.AddPair('nome', DB_Query.FieldByName('nome').Value);
+      listaObj.AddPair('cpf', DB_Query.FieldByName('cpf').Value);
+
+      Result.AddPair(inttostr(index),listaObj);
+      DB_Query.Next;
+      index := index+1;
+    end;
+    Memo_log.Lines.Add('Listagem de Operações/Clientes');
   end;
 end;
 
@@ -249,6 +276,7 @@ begin
       DB_Query.Next;
       index := index+1;
     end;
+    Memo_log.Lines.Add('Listagem de Listas');
   end;
 end;
 
@@ -388,6 +416,7 @@ begin
           Try
             DB_Query.ExecSQL;
             DB_Query.Connection.Commit;
+            Memo_log.Lines.Add('Tabela importada');
           Except on E : Exception do
             Result.AddPair('Exception', E.Message);
           End;
@@ -516,6 +545,7 @@ begin
     Try
       DB_Query.ExecSQL;
       Result.AddPair('Response', 'Lista cadastrada com sucesso');
+      Memo_log.Lines.Add('Lista cadastrada');
     Except on E : Exception do
       Result.AddPair('Exception', E.Message);
     End;
