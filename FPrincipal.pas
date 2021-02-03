@@ -240,7 +240,6 @@ begin
   Lista_Temp.First;
   horaAgora := Now;
 
-  Memo_log.Lines.Add('Ciclo de 10 minutos...');
   while not Lista_Temp.Eof do
   begin
   enviado     := Lista_Temp.FieldByName('enviado').AsInteger;
@@ -312,7 +311,7 @@ begin
               response := EnviarSms(numeroCliente, mensagemSubs);
               Memo_log.Lines.Add('Mensagem enviada para: '+numeroCliente+' Response: '+response);
             Except on E : Exception do
-              Memo_log.Lines.Add(E.Message);
+              Memo_log.Lines.Add(DateTimeToStr(horaAgora)+' - '+E.Message);
             End;
 
           end
@@ -342,7 +341,7 @@ begin
               response := EnviarEmail(pnomeCliente, email_cliente, nome_banco, id_email);
               Memo_log.Lines.Add('Email enviado para: '+email_cliente+' Response: '+response);
             Except on E: Exception do
-              Memo_log.Lines.Add(E.Message);
+              Memo_log.Lines.Add(DateTimeToStr(horaAgora)+' - '+E.Message);
             End;
           end;
 

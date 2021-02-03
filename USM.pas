@@ -25,13 +25,16 @@ type
     function UpdateLista(ID_BANCO : integer)      : TJSONObject; // POST
     function AcceptLista(const ID_LISTA: integer) : TJSONObject; // PUT
     function CancelLista(const ID_LISTA: integer) : TJSONObject; // DELETE
+
+    // Métodos para as operações
+    function UpdateOperacao(ID_BANCO: integer)       : TJSONObject;
   end;
 {$METHODINFO OFF}
 
 implementation
 
 
-uses System.StrUtils, FPrincipal;
+uses FPrincipal;
 
 // PUT
 function TSM.AcceptCliente(const ID_BANCO: integer): TJSONObject;
@@ -549,6 +552,80 @@ begin
     Except on E : Exception do
       Result.AddPair('Exception', E.Message);
     End;
+  end;
+
+end;
+
+function TSM.UpdateOperacao(ID_BANCO: integer): TJSONObject;
+const
+  _UPDATE = 'UPDATE operacoes SET tipooperacao = :tipooperacao, datavencto = :datavencto, valornominal = :valornominal WHERE cliente = :cliente AND nroperacao = :nroperacao AND remessa = :remessa ';
+var
+  WebModule   : TWebModule;
+  listaObj    : TJSONObject;
+  JSONVal     : TJSONValue;
+  JSONArr     : TJSONArray;
+  i           : integer;
+  opObj       : TJSONObject;
+  idfront     : string;
+  nroperacao  : string;
+  codcliente  : string;
+  remessa     : string;
+  idArr       : TArray<String>;
+begin
+  Result  := TJSONObject.Create;
+
+  // Tenta recuperar o conteúdo do Request Body
+  Try
+    WebModule := GetDataSnapWebModule;
+  Except on E : Exception do
+    Result.AddPair('Message', 'Erro ao recuperar conteúdo');
+  End;
+
+  if WebModule.Request.Content.IsEmpty then
+  begin
+      Result.AddPair('Message', 'Conteúdo vazio');
+  end;
+
+  // Parseamento do JSON para um JSONObject
+  listaObj := TJSONObject.ParseJSONValue(TEncoding.ASCII.GetBytes(WebModule.Request.Content), 0) as TJSONObject;
+  JSONVal := listaObj.Get('ops_json').JsonValue;
+  JSONArr := JSONVal as TJSONArray;
+
+  for i := 0 to JSONArr.Size - 1  do
+  begin
+    opObj := JSONArr.Get(i) as TJSONObject;
+    idfront := opObj.Values['id'].Value;
+
+    // Obtenção das informações de unicidade do registro de OPERAÇÃO
+    idArr := idFront.Split(['nrc']);
+    nroperacao := idArr[0];
+    remessa := idArr[1];
+    codcliente := idArr[2];
+
+    // UPDATE no Banco
+    with FormPrincipal do
+    begin
+      DB_Query.Active := false;
+      DB_Query.SQL.Text := _UPDATE;
+      DB_Query.ParamByName('cliente').Value       := codcliente;
+      DB_Query.ParamByName('nroperacao').Value    := nroperacao;
+      DB_Query.ParamByName('remessa').Value       := remessa;
+      DB_Query.ParamByName('tipooperacao').Value  := opObj.Values['operacao'].Value;
+      DB_Query.ParamByName('datavencto').Value    := opObj.Values['datavencto'].Value;
+      DB_Query.ParamByName('valornominal').Value  := strtofloat(StringReplace(opObj.Values['valornominal'].Value, '.', ',', [rfReplaceAll, rfIgnoreCase]));
+
+      Try
+        DB_Query.ExecSQL;
+        Result.AddPair('Response', 'Operações atualizadas com sucesso');
+        Memo_log.Lines.Add('Operações atualizadas');
+      Except on E : Exception do
+      begin
+        Memo_log.Lines.Add(E.Message);
+        Result.AddPair('Exception', E.Message);
+      end;
+      End;
+
+    end;
   end;
 
 end;

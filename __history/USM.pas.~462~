@@ -25,13 +25,16 @@ type
     function UpdateLista(ID_BANCO : integer)      : TJSONObject; // POST
     function AcceptLista(const ID_LISTA: integer) : TJSONObject; // PUT
     function CancelLista(const ID_LISTA: integer) : TJSONObject; // DELETE
+
+    // Métodos para as operações
+    function UpdateOperacao(ID_BANCO: integer)       : TJSONObject;
   end;
 {$METHODINFO OFF}
 
 implementation
 
 
-uses System.StrUtils, FPrincipal;
+uses FPrincipal;
 
 // PUT
 function TSM.AcceptCliente(const ID_BANCO: integer): TJSONObject;
@@ -98,6 +101,7 @@ begin
           DB_Query.Next;
           index := index+1;
         end;
+        Memo_log.Lines.Add('Cliente atualizado');
       Finally
         DB_Query.EnableConstraints;
       End;
@@ -166,6 +170,7 @@ begin
     Try
       DB_Query.ExecSQL;
       Result.AddPair('Response', 'Lista atualizada com sucesso');
+      Memo_log.Lines.Add('Lista atualizada');
     Except on E : Exception do
       Result.AddPair('Response', E.Message);
     End;
@@ -194,6 +199,7 @@ begin
     Try
       DB_Query.ExecSQL;
       Result.AddPair('Response', 'Lista deletada com sucesso');
+      Memo_log.Lines.Add('Lista deletada');
     Except on E : Exception do
       Result.AddPair('Response', E.Message);
     End;
@@ -203,15 +209,39 @@ end;
 // GET
 function TSM.Cliente(const ID_BANCO: integer): TJSONObject;
 const
-  _SELECT = 'SELECT * FROM operacoes';
+  _SELECT = 'SELECT o.cliente, o.nroperacao, o.remessa, o.tipooperacao, o.datavencto,  o.valornominal, c.nome, c.cpf FROM operacoes o INNER JOIN clientes c ON c.codigo = o.cliente WHERE o.banco = :id_banco';
+var
+  index    : integer;
+  listaObj : TJSONObject;
 begin
   with FormPrincipal do
   begin
     DB_Query.Active := false;
     DB_Query.SQL.Text := _SELECT;
+    DB_Query.ParamByName('id_banco').Value := ID_BANCO;
+    DB_Query.Open;
 
     Result := TJSONObject.Create;
+    DB_Query.First;
+    index := 0;
+    while not DB_Query.Eof do
+    begin
+      listaObj := TJSONObject.Create;
 
+      listaObj.AddPair('cliente', DB_Query.FieldByName('cliente').Value);
+      listaObj.AddPair('nroperacao', DB_Query.FieldByName('nroperacao').Value);
+      listaObj.AddPair('remessa', DB_Query.FieldByName('remessa').Value);
+      listaObj.AddPair('tipooperacao', DB_Query.FieldByName('tipooperacao').Value);
+      listaObj.AddPair('datavencto', DB_Query.FieldByName('datavencto').Value);
+      listaObj.AddPair('valornominal', DB_Query.FieldByName('valornominal').Value);
+      listaObj.AddPair('nome', DB_Query.FieldByName('nome').Value);
+      listaObj.AddPair('cpf', DB_Query.FieldByName('cpf').Value);
+
+      Result.AddPair(inttostr(index),listaObj);
+      DB_Query.Next;
+      index := index+1;
+    end;
+    Memo_log.Lines.Add('Listagem de Operações/Clientes');
   end;
 end;
 
@@ -522,6 +552,80 @@ begin
     Except on E : Exception do
       Result.AddPair('Exception', E.Message);
     End;
+  end;
+
+end;
+
+function TSM.UpdateOperacao(ID_BANCO: integer): TJSONObject;
+const
+  _UPDATE = 'UPDATE operacoes SET tipooperacao = :tipooperacao, datavencto = :datavencto, valornominal = :valornominal WHERE cliente = :cliente AND nroperacao = :nroperacao AND remessa = :remessa ';
+var
+  WebModule   : TWebModule;
+  listaObj    : TJSONObject;
+  JSONVal     : TJSONValue;
+  JSONArr     : TJSONArray;
+  i           : integer;
+  opObj       : TJSONObject;
+  idfront     : string;
+  nroperacao  : string;
+  codcliente  : string;
+  remessa     : string;
+  idArr       : TArray<String>;
+begin
+  Result  := TJSONObject.Create;
+
+  // Tenta recuperar o conteúdo do Request Body
+  Try
+    WebModule := GetDataSnapWebModule;
+  Except on E : Exception do
+    Result.AddPair('Message', 'Erro ao recuperar conteúdo');
+  End;
+
+  if WebModule.Request.Content.IsEmpty then
+  begin
+      Result.AddPair('Message', 'Conteúdo vazio');
+  end;
+
+  // Parseamento do JSON para um JSONObject
+  listaObj := TJSONObject.ParseJSONValue(TEncoding.ASCII.GetBytes(WebModule.Request.Content), 0) as TJSONObject;
+  JSONVal := listaObj.Get('ops_json').JsonValue;
+  JSONArr := JSONVal as TJSONArray;
+
+  for i := 0 to JSONArr.Size - 1  do
+  begin
+    opObj := JSONArr.Get(i) as TJSONObject;
+    idfront := opObj.Values['id'].Value;
+
+    // Obtenção das informações de unicidade do registro de OPERAÇÃO
+    idArr := idFront.Split(['nrc']);
+    nroperacao := idArr[0];
+    remessa := idArr[1];
+    codcliente := idArr[2];
+
+    // UPDATE no Banco
+    with FormPrincipal do
+    begin
+      DB_Query.Active := false;
+      DB_Query.SQL.Text := _UPDATE;
+      DB_Query.ParamByName('cliente').Value       := codcliente;
+      DB_Query.ParamByName('nroperacao').Value    := nroperacao;
+      DB_Query.ParamByName('remessa').Value       := remessa;
+      DB_Query.ParamByName('tipooperacao').Value  := opObj.Values['operacao'].Value;
+      DB_Query.ParamByName('datavencto').Value    := opObj.Values['datavencto'].Value;
+      DB_Query.ParamByName('valornominal').Value  := opObj.Values['valornominal'].Value;
+
+      Try
+        DB_Query.ExecSQL;
+        Result.AddPair('Response', 'Operações atualizadas com sucesso');
+        Memo_log.Lines.Add('Operações atualizadas');
+      Except on E : Exception do
+      begin
+        Memo_log.Lines.Add(E.Message);
+        Result.AddPair('Exception', E.Message);
+      end;
+      End;
+
+    end;
   end;
 
 end;
