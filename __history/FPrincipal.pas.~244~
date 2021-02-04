@@ -99,6 +99,7 @@ end;
 procedure TFormPrincipal.ButtonStartClick(Sender: TObject);
 begin
   StartServer;
+  Memo_log.Lines.Add('API Iniciada na porta: '+EditPort.Text);
 end;
 
 procedure TerminateThreads;
@@ -112,6 +113,7 @@ begin
   TerminateThreads;
   FServer.Active := False;
   FServer.Bindings.Clear;
+  Memo_log.Lines.Add('API fechada');
 end;
 
 function TFormPrincipal.EnviarEmail(var nome_cliente, email_cliente, nome_banco,
@@ -121,6 +123,9 @@ var
   ss : TStringStream;
 begin
   URL := 'https://www.grupovoz.net.br/email/send/'+nome_cliente+'/'+email_cliente+'/'+nome_banco+'/'+id_email;
+  // URL para Pipedream - Teste
+  //URL := 'https://endofdg5rkj3qrw.m.pipedream.net/'+nome_cliente+'/'+email_cliente+'/'+nome_banco+'/'+id_email;
+
   ss := TStringStream.Create('', tencoding.UTF8);
   ss.WriteString(URL);
   self.NetHTTPClient1.Accept :='application/x-www-form-urlencoded';
@@ -227,7 +232,7 @@ var
   nome_banco  : string;
 begin
   // Richard @ Tempo de permissividade entre a hora da lista e a hora atual em minutos.
-  permTempo := 5;
+  permTempo := 3;
 
   // Richard @ Percorre a tabela temporária de listas em memória,
   //         @ Checando se está na hora de enviar alguma lista,
@@ -235,7 +240,6 @@ begin
   Lista_Temp.First;
   horaAgora := Now;
 
-  Memo_log.Lines.Add('Ciclo de 10 minutos...');
   while not Lista_Temp.Eof do
   begin
   enviado     := Lista_Temp.FieldByName('enviado').AsInteger;
@@ -280,6 +284,7 @@ begin
             mensagemSubs := StringReplace(mensagemSubs, '$valorop$', DB_Ops.FieldByName('valornominal').AsString, [rfReplaceAll, rfIgnoreCase]);
             mensagemSubs  := StringReplace(mensagemSubs, '$nomecliente$', DB_Ops.FieldByName('nome').AsString, [rfReplaceAll, rfIgnoreCase]);
             mensagemSubs  := StringReplace(mensagemSubs, '$nomealuno$', DB_Ops.FieldByName('condnegociais').AsString, [rfReplaceAll, rfIgnoreCase]);
+            mensagemSubs  := StringReplace(mensagemSubs, '$numeroop$', DB_Ops.FieldByName('nroperacao').AsString, [rfReplaceAll, rfIgnoreCase]);
             //       @ Conseguir apenas os primeiros nomes de cliente e aluno
             pnomeCliente  := DB_Ops.FieldByName('nome').AsString;
             pnomeAluno    := DB_Ops.FieldByName('condnegociais').AsString;
@@ -306,7 +311,7 @@ begin
               response := EnviarSms(numeroCliente, mensagemSubs);
               Memo_log.Lines.Add('Mensagem enviada para: '+numeroCliente+' Response: '+response);
             Except on E : Exception do
-              Memo_log.Lines.Add(E.Message);
+              Memo_log.Lines.Add(DateTimeToStr(horaAgora)+' - '+E.Message);
             End;
 
           end
@@ -326,14 +331,17 @@ begin
               nome_banco := DB_Banco.FieldByName('nome').AsString;
               DB_Banco.Close;
             Except on E: Exception do
+            begin
+              nome_banco := ' ';
               Memo_log.Lines.Add(E.Message);
+            end;
             End;
 
             Try
               response := EnviarEmail(pnomeCliente, email_cliente, nome_banco, id_email);
               Memo_log.Lines.Add('Email enviado para: '+email_cliente+' Response: '+response);
             Except on E: Exception do
-              Memo_log.Lines.Add(E.Message);
+              Memo_log.Lines.Add(DateTimeToStr(horaAgora)+' - '+E.Message);
             End;
           end;
 

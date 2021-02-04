@@ -26,8 +26,11 @@ type
     function AcceptLista(const ID_LISTA: integer) : TJSONObject; // PUT
     function CancelLista(const ID_LISTA: integer) : TJSONObject; // DELETE
 
+    // Métods para relatóros
+    function Relatorio(const ID_BANCO: integer=0) : TJSONObject; // GET
+
     // Métodos para as operações
-    function UpdateOperacao(ID_BANCO: integer)       : TJSONObject;
+    function UpdateOperacao(ID_BANCO: integer)       : TJSONObject; // POST
   end;
 {$METHODINFO OFF}
 
@@ -280,6 +283,41 @@ begin
       index := index+1;
     end;
     Memo_log.Lines.Add('Listagem de Listas');
+  end;
+end;
+
+function TSM.Relatorio(const ID_BANCO: integer): TJSONObject;
+const
+  _SELECT = 'SELECT * FROM log_envios ';
+var
+  index    : integer;
+  listaObj : TJSONObject;
+begin
+  with FormPrincipal do
+  begin
+    DB_Query.Active := false;
+    DB_Query.SQL.Text := _SELECT;
+    DB_Query.SQL.Add('WHERE banco = :banco ORDER BY id');
+    DB_Query.ParamByName('banco').Value := ID_BANCO;
+    DB_Query.Open;
+
+    Result := TJSONObject.Create;
+    DB_Query.First;
+    index := 0;
+    while not DB_Query.Eof do
+    begin
+      listaObj := TJSONObject.Create;
+
+      listaObj.AddPair('id', DB_Query.FieldByName('ID').Value);
+      listaObj.AddPair('codigo', DB_Query.FieldByName('codigo').Value);
+      listaObj.AddPair('log', DB_Query.FieldByName('log').Value);
+      listaObj.AddPair('data', DB_Query.FieldByName('data').Value);
+
+      Result.AddPair(inttostr(index),listaObj);
+      DB_Query.Next;
+      index := index+1;
+    end;
+    Memo_log.Lines.Add('Relatório de envios');
   end;
 end;
 
@@ -602,7 +640,7 @@ begin
     remessa := idArr[1];
     codcliente := idArr[2];
 
-    // UPDATE no Banco
+    // UPDATE no Banco Operação a operação
     with FormPrincipal do
     begin
       DB_Query.Active := false;

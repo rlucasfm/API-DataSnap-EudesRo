@@ -49,6 +49,7 @@ type
     Memo_log: TMemo;
     Label3: TLabel;
     DB_Banco: TFDQuery;
+    DB_Log: TFDQuery;
     procedure FormCreate(Sender: TObject);
     procedure ApplicationEvents1Idle(Sender: TObject; var Done: Boolean);
     procedure ButtonStartClick(Sender: TObject);
@@ -62,6 +63,8 @@ type
     function StripChars(const Text: string; const InValidChars: System.SysUtils.TSysCharSet): string;
     function EnviarSms(var numero, mensagem: string): string;
     function EnviarEmail(var nome_cliente, email_cliente, nome_banco, id_email : string): string;
+    procedure SalvarLog(const mensagem : string; const banco, codigo : integer);
+    function primary_key(const tabela : string; const chave : string): integer;
     { Private declarations }
   public
     { Public declarations }
@@ -184,6 +187,45 @@ begin
   end;
 end;
 
+// Pega a chave primaria da tabela especificada
+function TFormPrincipal.primary_key(const tabela, chave: string): integer;
+begin
+  with FormPrincipal do
+  begin
+    DB_IDGen.Active := false;
+    DB_IDGen.SQL.Text := 'SELECT FIRST 1 * FROM '+tabela+' ORDER BY '+chave+' DESC';
+    DB_IDGen.Open;
+
+    Result := DB_IDGen.FieldByName(chave).AsInteger;
+    DB_IDGen.Close;
+  end;
+end;
+
+procedure TFormPrincipal.SalvarLog(const mensagem: string;
+  const banco, codigo: integer);
+const
+  _INSERT = 'INSERT INTO log_envios (id, banco, codigo, log, data) VALUES (:id, :banco, :codigo, :log, :data)';
+var
+  log_id : integer;
+begin
+  DB_Log.Active := false;
+  DB_Log.SQL.Text := _INSERT;
+  log_id := primary_key('log_envios', 'id')+1;
+
+  DB_Log.ParamByName('id').Value      := log_id;
+  DB_Log.ParamByName('banco').Value   := banco;
+  DB_Log.ParamByName('codigo').Value  := codigo;
+  DB_Log.ParamByName('log').Value     := mensagem;
+  DB_Log.ParamByName('data').Value    := Now;
+
+  Try
+    DB_Log.ExecSQL;
+    Memo_log.Lines.Add('Log adicionado');
+  Except on E: Exception do
+    Memo_log.Lines.Add(E.Message);
+  End;
+end;
+
 procedure TFormPrincipal.StartServer;
 begin
   if not FServer.Active then
@@ -232,7 +274,7 @@ var
   nome_banco  : string;
 begin
   // Richard @ Tempo de permissividade entre a hora da lista e a hora atual em minutos.
-  permTempo := 5;
+  permTempo := 1;
 
   // Richard @ Percorre a tabela temporária de listas em memória,
   //         @ Checando se está na hora de enviar alguma lista,
@@ -309,7 +351,9 @@ begin
             //       @ Envia o SMS
             Try
               response := EnviarSms(numeroCliente, mensagemSubs);
+              DB_Log.Active := false;
               Memo_log.Lines.Add('Mensagem enviada para: '+numeroCliente+' Response: '+response);
+              SalvarLog(mensagemSubs, Lista_Temp.FieldByName('ID_BANCO').AsInteger, 1);
             Except on E : Exception do
               Memo_log.Lines.Add(DateTimeToStr(horaAgora)+' - '+E.Message);
             End;
@@ -340,6 +384,7 @@ begin
             Try
               response := EnviarEmail(pnomeCliente, email_cliente, nome_banco, id_email);
               Memo_log.Lines.Add('Email enviado para: '+email_cliente+' Response: '+response);
+              SalvarLog('Email enviado para '+email_cliente, Lista_Temp.FieldByName('ID_BANCO').AsInteger, 2);
             Except on E: Exception do
               Memo_log.Lines.Add(DateTimeToStr(horaAgora)+' - '+E.Message);
             End;

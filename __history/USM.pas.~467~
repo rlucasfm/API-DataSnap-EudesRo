@@ -558,7 +558,7 @@ end;
 
 function TSM.UpdateOperacao(ID_BANCO: integer): TJSONObject;
 const
-  _UPDATE = 'UPDATE operacoes SET tipooperacao = :tipooperacao, datavencto = :datavencto, valornominal = :valornominal WHERE ';
+  _UPDATE = 'UPDATE operacoes SET tipooperacao = :tipooperacao, datavencto = :datavencto, valornominal = :valornominal WHERE cliente = :cliente AND nroperacao = :nroperacao AND remessa = :remessa ';
 var
   WebModule   : TWebModule;
   listaObj    : TJSONObject;
@@ -586,6 +586,7 @@ begin
       Result.AddPair('Message', 'Conteúdo vazio');
   end;
 
+  // Parseamento do JSON para um JSONObject
   listaObj := TJSONObject.ParseJSONValue(TEncoding.ASCII.GetBytes(WebModule.Request.Content), 0) as TJSONObject;
   JSONVal := listaObj.Get('ops_json').JsonValue;
   JSONArr := JSONVal as TJSONArray;
@@ -595,34 +596,37 @@ begin
     opObj := JSONArr.Get(i) as TJSONObject;
     idfront := opObj.Values['id'].Value;
 
+    // Obtenção das informações de unicidade do registro de OPERAÇÃO
     idArr := idFront.Split(['nrc']);
     nroperacao := idArr[0];
     remessa := idArr[1];
     codcliente := idArr[2];
-    FormPrincipal.Memo_log.Lines.Add('NR: '+nroperacao+' RM: '+remessa+' Cod: '+codcliente);
+
+    // UPDATE no Banco Operação a operação
+    with FormPrincipal do
+    begin
+      DB_Query.Active := false;
+      DB_Query.SQL.Text := _UPDATE;
+      DB_Query.ParamByName('cliente').Value       := codcliente;
+      DB_Query.ParamByName('nroperacao').Value    := nroperacao;
+      DB_Query.ParamByName('remessa').Value       := remessa;
+      DB_Query.ParamByName('tipooperacao').Value  := opObj.Values['operacao'].Value;
+      DB_Query.ParamByName('datavencto').Value    := opObj.Values['datavencto'].Value;
+      DB_Query.ParamByName('valornominal').Value  := strtofloat(StringReplace(opObj.Values['valornominal'].Value, '.', ',', [rfReplaceAll, rfIgnoreCase]));
+
+      Try
+        DB_Query.ExecSQL;
+        Result.AddPair('Response', 'Operações atualizadas com sucesso');
+        Memo_log.Lines.Add('Operações atualizadas');
+      Except on E : Exception do
+      begin
+        Memo_log.Lines.Add(E.Message);
+        Result.AddPair('Exception', E.Message);
+      end;
+      End;
+
+    end;
   end;
-
-
-  // Recupera a string JSON enviada e constroi um objeto JSON ordenado.
-//  stringJSON := WebModule.Request.ContentFields.ToStringArray;
-//  forIndex := 0;
-//  for strVal in stringJSON do
-//  begin
-//    if forIndex <> 0 then
-//    begin
-//      if Odd(forIndex) then
-//      begin
-//        stringTemp := StripChars(strVal, [',','\','"','{','[']);
-//      end
-//      else
-//      begin
-//        listaObj.AddPair(stringTemp, StripChars(strVal, [',','\','"','{']));
-//      end;
-//    end;
-//    forIndex := forIndex+1;
-//  end;
-
-//  FormPrincipal.Memo_log.Lines.Add(listaObj.ToString);
 
 end;
 

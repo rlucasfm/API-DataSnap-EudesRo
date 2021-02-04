@@ -49,6 +49,7 @@ type
     Memo_log: TMemo;
     Label3: TLabel;
     DB_Banco: TFDQuery;
+    DB_Log: TFDQuery;
     procedure FormCreate(Sender: TObject);
     procedure ApplicationEvents1Idle(Sender: TObject; var Done: Boolean);
     procedure ButtonStartClick(Sender: TObject);
@@ -62,6 +63,8 @@ type
     function StripChars(const Text: string; const InValidChars: System.SysUtils.TSysCharSet): string;
     function EnviarSms(var numero, mensagem: string): string;
     function EnviarEmail(var nome_cliente, email_cliente, nome_banco, id_email : string): string;
+    procedure SalvarLog(const mensagem : string; const banco, codigo : integer);
+    function primary_key(const tabela : string; const chave : string): integer;
     { Private declarations }
   public
     { Public declarations }
@@ -99,6 +102,7 @@ end;
 procedure TFormPrincipal.ButtonStartClick(Sender: TObject);
 begin
   StartServer;
+  Memo_log.Lines.Add('API Iniciada na porta: '+EditPort.Text);
 end;
 
 procedure TerminateThreads;
@@ -112,6 +116,7 @@ begin
   TerminateThreads;
   FServer.Active := False;
   FServer.Bindings.Clear;
+  Memo_log.Lines.Add('API fechada');
 end;
 
 function TFormPrincipal.EnviarEmail(var nome_cliente, email_cliente, nome_banco,
@@ -120,8 +125,9 @@ var
   url: string;
   ss : TStringStream;
 begin
-  //URL := 'https://www.grupovoz.net.br/email/send/'+nome_cliente+'/'+email_cliente+'/'+nome_banco+'/'+id_email;
-  URL := 'https://endofdg5rkj3qrw.m.pipedream.net/'+nome_cliente+'/'+email_cliente+'/'+nome_banco+'/'+id_email;
+  URL := 'https://www.grupovoz.net.br/email/send/'+nome_cliente+'/'+email_cliente+'/'+nome_banco+'/'+id_email;
+  // URL para Pipedream - Teste
+  //URL := 'https://endofdg5rkj3qrw.m.pipedream.net/'+nome_cliente+'/'+email_cliente+'/'+nome_banco+'/'+id_email;
 
   ss := TStringStream.Create('', tencoding.UTF8);
   ss.WriteString(URL);
@@ -181,6 +187,45 @@ begin
   end;
 end;
 
+// Pega a chave primaria da tabela especificada
+function TFormPrincipal.primary_key(const tabela, chave: string): integer;
+begin
+  with FormPrincipal do
+  begin
+    DB_IDGen.Active := false;
+    DB_IDGen.SQL.Text := 'SELECT FIRST 1 * FROM '+tabela+' ORDER BY '+chave+' DESC';
+    DB_IDGen.Open;
+
+    Result := DB_IDGen.FieldByName(chave).AsInteger;
+    DB_IDGen.Close;
+  end;
+end;
+
+procedure TFormPrincipal.SalvarLog(const mensagem: string;
+  const banco, codigo: integer);
+const
+  _INSERT = 'INSERT INTO log_envios (id, banco, codigo, log, data) VALUES (:id, :banco, :codigo, :log, :data)';
+var
+  log_id : integer;
+begin
+  DB_Log.Active := false;
+  DB_Log.SQL.Text := _INSERT;
+  log_id := primary_key('log_envios', 'id')+1;
+
+  DB_Log.ParamByName('id').Value      := log_id;
+  DB_Log.ParamByName('banco').Value   := banco;
+  DB_Log.ParamByName('codigo').Value  := codigo;
+  DB_Log.ParamByName('log').Value     := mensagem;
+  DB_Log.ParamByName('data').Value    := DateToStr(date);
+
+  Try
+    DB_Log.ExecSQL;
+    Memo_log.Lines.Add('Log adicionado');
+  Except on E: Exception do
+    Memo_log.Lines.Add(E.Message);
+  End;
+end;
+
 procedure TFormPrincipal.StartServer;
 begin
   if not FServer.Active then
@@ -229,7 +274,7 @@ var
   nome_banco  : string;
 begin
   // Richard @ Tempo de permissividade entre a hora da lista e a hora atual em minutos.
-  permTempo := 5;
+  permTempo := 1;
 
   // Richard @ Percorre a tabela temporária de listas em memória,
   //         @ Checando se está na hora de enviar alguma lista,
@@ -237,7 +282,6 @@ begin
   Lista_Temp.First;
   horaAgora := Now;
 
-  Memo_log.Lines.Add('Ciclo de 10 minutos...');
   while not Lista_Temp.Eof do
   begin
   enviado     := Lista_Temp.FieldByName('enviado').AsInteger;
@@ -282,6 +326,7 @@ begin
             mensagemSubs := StringReplace(mensagemSubs, '$valorop$', DB_Ops.FieldByName('valornominal').AsString, [rfReplaceAll, rfIgnoreCase]);
             mensagemSubs  := StringReplace(mensagemSubs, '$nomecliente$', DB_Ops.FieldByName('nome').AsString, [rfReplaceAll, rfIgnoreCase]);
             mensagemSubs  := StringReplace(mensagemSubs, '$nomealuno$', DB_Ops.FieldByName('condnegociais').AsString, [rfReplaceAll, rfIgnoreCase]);
+            mensagemSubs  := StringReplace(mensagemSubs, '$numeroop$', DB_Ops.FieldByName('nroperacao').AsString, [rfReplaceAll, rfIgnoreCase]);
             //       @ Conseguir apenas os primeiros nomes de cliente e aluno
             pnomeCliente  := DB_Ops.FieldByName('nome').AsString;
             pnomeAluno    := DB_Ops.FieldByName('condnegociais').AsString;
@@ -306,9 +351,11 @@ begin
             //       @ Envia o SMS
             Try
               response := EnviarSms(numeroCliente, mensagemSubs);
+              DB_Log.Active := false;
               Memo_log.Lines.Add('Mensagem enviada para: '+numeroCliente+' Response: '+response);
+              SalvarLog('Mensagem enviada para '+numeroCliente, Lista_Temp.FieldByName('ID_BANCO').AsInteger, 1);
             Except on E : Exception do
-              Memo_log.Lines.Add(E.Message);
+              Memo_log.Lines.Add(DateTimeToStr(horaAgora)+' - '+E.Message);
             End;
 
           end
@@ -328,14 +375,18 @@ begin
               nome_banco := DB_Banco.FieldByName('nome').AsString;
               DB_Banco.Close;
             Except on E: Exception do
+            begin
+              nome_banco := ' ';
               Memo_log.Lines.Add(E.Message);
+            end;
             End;
 
             Try
               response := EnviarEmail(pnomeCliente, email_cliente, nome_banco, id_email);
               Memo_log.Lines.Add('Email enviado para: '+email_cliente+' Response: '+response);
+              SalvarLog('Email enviado para '+email_cliente, Lista_Temp.FieldByName('ID_BANCO').AsInteger, 2);
             Except on E: Exception do
-              Memo_log.Lines.Add(E.Message);
+              Memo_log.Lines.Add(DateTimeToStr(horaAgora)+' - '+E.Message);
             End;
           end;
 
